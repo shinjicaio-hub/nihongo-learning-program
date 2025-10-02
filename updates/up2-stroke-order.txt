@@ -1,0 +1,634 @@
+dialog.tsx -->
+
+"use client"
+
+import * as React from "react"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { X } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+const Dialog = DialogPrimitive.Root
+
+const DialogTrigger = DialogPrimitive.Trigger
+
+const DialogPortal = DialogPrimitive.Portal
+
+const DialogClose = DialogPrimitive.Close
+
+const DialogOverlay = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Overlay
+    ref={ref}
+    className={cn(
+      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className,
+    )}
+    {...props}
+  />
+))
+DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
+
+const DialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPortal>
+    <DialogOverlay />
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+    </DialogPrimitive.Content>
+  </DialogPortal>
+))
+DialogContent.displayName = DialogPrimitive.Content.displayName
+
+const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props} />
+)
+DialogHeader.displayName = "DialogHeader"
+
+const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />
+)
+DialogFooter.displayName = "DialogFooter"
+
+const DialogTitle = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Title
+    ref={ref}
+    className={cn("text-lg font-semibold leading-none tracking-tight", className)}
+    {...props}
+  />
+))
+DialogTitle.displayName = DialogPrimitive.Title.displayName
+
+const DialogDescription = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Description ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props} />
+))
+DialogDescription.displayName = DialogPrimitive.Description.displayName
+
+export {
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogClose,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+}
+
+####### (fim do código) ##########################################
+
+stroke-order-modal.tsx -->
+
+"use client"
+
+import type React from "react"
+
+import { useState, useRef, useEffect } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { RotateCcw, Play, Pause, CheckCircle } from "lucide-react"
+
+interface StrokeOrderModalProps {
+  character: string
+  romaji: string
+  isOpen: boolean
+  onClose: () => void
+}
+
+// Dados simplificados de stroke order para alguns caracteres
+const strokeOrderData: Record<string, { strokes: string[]; directions: string[] }> = {
+  あ: {
+    strokes: ["M50,20 Q30,40 40,60 Q50,80 60,60", "M70,30 Q80,50 70,70", "M30,70 Q50,75 70,70"],
+    directions: ["Curva da esquerda para baixo", "Traço vertical à direita", "Traço horizontal inferior"],
+  },
+  か: {
+    strokes: ["M30,20 L30,80", "M30,40 L70,40", "M50,40 Q60,60 50,80"],
+    directions: ["Traço vertical esquerdo", "Traço horizontal", "Curva à direita"],
+  },
+  き: {
+    strokes: ["M25,20 L25,80", "M25,30 L60,30", "M25,50 L55,50", "M45,50 Q55,70 45,80"],
+    directions: ["Traço vertical esquerdo", "Traço horizontal superior", "Traço horizontal meio", "Curva inferior"],
+  },
+  ア: {
+    strokes: ["M40,20 L20,80", "M60,20 L80,80", "M30,50 L70,50"],
+    directions: ["Traço diagonal esquerdo", "Traço diagonal direito", "Traço horizontal central"],
+  },
+  カ: {
+    strokes: ["M30,20 L30,80", "M30,40 L70,40", "M50,40 Q60,60 50,80"],
+    directions: ["Traço vertical esquerdo", "Traço horizontal", "Curva à direita"],
+  },
+}
+
+export function StrokeOrderModal({ character, romaji, isOpen, onClose }: StrokeOrderModalProps) {
+  const [currentStroke, setCurrentStroke] = useState(0)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [userPath, setUserPath] = useState<string>("")
+  const [isDrawing, setIsDrawing] = useState(false)
+  const [drawingComplete, setDrawingComplete] = useState(false)
+  const canvasRef = useRef<SVGSVGElement>(null)
+  const pathRef = useRef<string>("")
+
+  const strokeData = strokeOrderData[character] || {
+    strokes: ["M50,50 L50,50"],
+    directions: ["Caractere não disponível para prática"],
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentStroke(0)
+      setIsAnimating(false)
+      setUserPath("")
+      setDrawingComplete(false)
+      pathRef.current = ""
+    }
+  }, [isOpen, character])
+
+  const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (drawingComplete) return
+    setIsDrawing(true)
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+    pathRef.current = `M${x},${y}`
+    setUserPath(pathRef.current)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!isDrawing || drawingComplete) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+    pathRef.current += ` L${x},${y}`
+    setUserPath(pathRef.current)
+  }
+
+  const handleMouseUp = () => {
+    setIsDrawing(false)
+  }
+
+  const nextStroke = () => {
+    if (currentStroke < strokeData.strokes.length - 1) {
+      setCurrentStroke(currentStroke + 1)
+      setUserPath("")
+      pathRef.current = ""
+    } else {
+      setDrawingComplete(true)
+    }
+  }
+
+  const resetDrawing = () => {
+    setCurrentStroke(0)
+    setUserPath("")
+    setDrawingComplete(false)
+    setIsAnimating(false)
+    pathRef.current = ""
+  }
+
+  const toggleAnimation = () => {
+    setIsAnimating(!isAnimating)
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-center text-2xl">
+            Ordem de Escrita: {character} ({romaji})
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* Área de desenho */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="relative">
+                <svg
+                  ref={canvasRef}
+                  width="100%"
+                  height="300"
+                  viewBox="0 0 100 100"
+                  className="border border-border rounded-lg bg-background cursor-crosshair"
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                >
+                  {/* Linhas guia */}
+                  <defs>
+                    <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+                      <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#e5e7eb" strokeWidth="0.5" />
+                    </pattern>
+                  </defs>
+                  <rect width="100" height="100" fill="url(#grid)" />
+
+                  {/* Traços já completados */}
+                  {strokeData.strokes.slice(0, currentStroke).map((stroke, index) => (
+                    <path
+                      key={`completed-${index}`}
+                      d={stroke}
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  ))}
+
+                  {/* Traço atual (guia) */}
+                  {!drawingComplete && (
+                    <path
+                      d={strokeData.strokes[currentStroke]}
+                      fill="none"
+                      stroke="#e5e7eb"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeDasharray="5,5"
+                      className={isAnimating ? "animate-pulse" : ""}
+                    />
+                  )}
+
+                  {/* Desenho do usuário */}
+                  {userPath && (
+                    <path
+                      d={userPath}
+                      fill="none"
+                      stroke="#3b82f6"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  )}
+
+                  {/* Indicador de início do traço */}
+                  {!drawingComplete && strokeData.strokes[currentStroke] && (
+                    <circle
+                      cx={strokeData.strokes[currentStroke].match(/M(\d+\.?\d*)/)?.[1] || "50"}
+                      cy={strokeData.strokes[currentStroke].match(/M\d+\.?\d*,(\d+\.?\d*)/)?.[1] || "50"}
+                      r="2"
+                      fill="#ef4444"
+                      className="animate-ping"
+                    />
+                  )}
+                </svg>
+
+                {drawingComplete && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
+                    <div className="text-center space-y-2">
+                      <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
+                      <p className="text-lg font-semibold text-green-600">Parabéns!</p>
+                      <p className="text-sm text-muted-foreground">Você completou a escrita de {character}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Informações do traço atual */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">
+                  Traço {currentStroke + 1} de {strokeData.strokes.length}
+                </Badge>
+                {drawingComplete && (
+                  <Badge variant="default" className="bg-green-500">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Completo
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {strokeData.directions[currentStroke] || "Direção não disponível"}
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={toggleAnimation} disabled={drawingComplete}>
+                {isAnimating ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                {isAnimating ? "Pausar" : "Animar"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={resetDrawing}>
+                <RotateCcw className="w-4 h-4" />
+                Reiniciar
+              </Button>
+            </div>
+          </div>
+
+          {/* Controles */}
+          <div className="flex justify-between">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentStroke(Math.max(0, currentStroke - 1))}
+              disabled={currentStroke === 0 || drawingComplete}
+            >
+              Traço Anterior
+            </Button>
+
+            <Button onClick={nextStroke} disabled={drawingComplete}>
+              {currentStroke === strokeData.strokes.length - 1 ? "Finalizar" : "Próximo Traço"}
+            </Button>
+          </div>
+
+          {/* Instruções */}
+          <Card className="bg-muted/50">
+            <CardContent className="p-4">
+              <h4 className="font-semibold mb-2">Como usar:</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• O ponto vermelho indica onde começar o traço</li>
+                <li>• Siga a linha pontilhada com o mouse pressionado</li>
+                <li>• Use "Animar" para ver a demonstração</li>
+                <li>• Complete todos os traços na ordem correta</li>
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+####### (fim do código) ##########################################
+
+character-tables.tsx -->
+
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { StrokeOrderModal } from "./stroke-order-modal"
+
+const hiraganaData = [
+  { char: "あ", romaji: "a" },
+  { char: "い", romaji: "i" },
+  { char: "う", romaji: "u" },
+  { char: "え", romaji: "e" },
+  { char: "お", romaji: "o" },
+  { char: "か", romaji: "ka" },
+  { char: "き", romaji: "ki" },
+  { char: "く", romaji: "ku" },
+  { char: "け", romaji: "ke" },
+  { char: "こ", romaji: "ko" },
+  { char: "が", romaji: "ga" },
+  { char: "ぎ", romaji: "gi" },
+  { char: "ぐ", romaji: "gu" },
+  { char: "げ", romaji: "ge" },
+  { char: "ご", romaji: "go" },
+  { char: "さ", romaji: "sa" },
+  { char: "し", romaji: "shi" },
+  { char: "す", romaji: "su" },
+  { char: "せ", romaji: "se" },
+  { char: "そ", romaji: "so" },
+  { char: "ざ", romaji: "za" },
+  { char: "じ", romaji: "ji" },
+  { char: "ず", romaji: "zu" },
+  { char: "ぜ", romaji: "ze" },
+  { char: "ぞ", romaji: "zo" },
+  { char: "た", romaji: "ta" },
+  { char: "ち", romaji: "chi" },
+  { char: "つ", romaji: "tsu" },
+  { char: "て", romaji: "te" },
+  { char: "と", romaji: "to" },
+  { char: "だ", romaji: "da" },
+  { char: "ぢ", romaji: "ji" },
+  { char: "づ", romaji: "zu" },
+  { char: "で", romaji: "de" },
+  { char: "ど", romaji: "do" },
+  { char: "な", romaji: "na" },
+  { char: "に", romaji: "ni" },
+  { char: "ぬ", romaji: "nu" },
+  { char: "ね", romaji: "ne" },
+  { char: "の", romaji: "no" },
+  { char: "は", romaji: "ha" },
+  { char: "ひ", romaji: "hi" },
+  { char: "ふ", romaji: "fu" },
+  { char: "へ", romaji: "he" },
+  { char: "ほ", romaji: "ho" },
+  { char: "ば", romaji: "ba" },
+  { char: "び", romaji: "bi" },
+  { char: "ぶ", romaji: "bu" },
+  { char: "べ", romaji: "be" },
+  { char: "ぼ", romaji: "bo" },
+  { char: "ぱ", romaji: "pa" },
+  { char: "ぴ", romaji: "pi" },
+  { char: "ぷ", romaji: "pu" },
+  { char: "ぺ", romaji: "pe" },
+  { char: "ぽ", romaji: "po" },
+  { char: "ま", romaji: "ma" },
+  { char: "み", romaji: "mi" },
+  { char: "む", romaji: "mu" },
+  { char: "め", romaji: "me" },
+  { char: "も", romaji: "mo" },
+  { char: "や", romaji: "ya" },
+  { char: "", romaji: "" },
+  { char: "ゆ", romaji: "yu" },
+  { char: "", romaji: "" },
+  { char: "よ", romaji: "yo" },
+  { char: "ら", romaji: "ra" },
+  { char: "り", romaji: "ri" },
+  { char: "る", romaji: "ru" },
+  { char: "れ", romaji: "re" },
+  { char: "ろ", romaji: "ro" },
+  { char: "わ", romaji: "wa" },
+  { char: "", romaji: "" },
+  { char: "", romaji: "" },
+  { char: "", romaji: "" },
+  { char: "を", romaji: "wo" },
+  { char: "ん", romaji: "n" },
+  { char: "", romaji: "" },
+  { char: "", romaji: "" },
+  { char: "", romaji: "" },
+  { char: "", romaji: "" },
+]
+
+const katakanaData = [
+  { char: "ア", romaji: "a" },
+  { char: "イ", romaji: "i" },
+  { char: "ウ", romaji: "u" },
+  { char: "エ", romaji: "e" },
+  { char: "オ", romaji: "o" },
+  { char: "カ", romaji: "ka" },
+  { char: "キ", romaji: "ki" },
+  { char: "ク", romaji: "ku" },
+  { char: "ケ", romaji: "ke" },
+  { char: "コ", romaji: "ko" },
+  { char: "ガ", romaji: "ga" },
+  { char: "ギ", romaji: "gi" },
+  { char: "グ", romaji: "gu" },
+  { char: "ゲ", romaji: "ge" },
+  { char: "ゴ", romaji: "go" },
+  { char: "サ", romaji: "sa" },
+  { char: "シ", romaji: "shi" },
+  { char: "ス", romaji: "su" },
+  { char: "セ", romaji: "se" },
+  { char: "ソ", romaji: "so" },
+  { char: "ザ", romaji: "za" },
+  { char: "ジ", romaji: "ji" },
+  { char: "ズ", romaji: "zu" },
+  { char: "ゼ", romaji: "ze" },
+  { char: "ゾ", romaji: "zo" },
+  { char: "タ", romaji: "ta" },
+  { char: "チ", romaji: "chi" },
+  { char: "ツ", romaji: "tsu" },
+  { char: "テ", romaji: "te" },
+  { char: "ト", romaji: "to" },
+  { char: "ダ", romaji: "da" },
+  { char: "ヂ", romaji: "ji" },
+  { char: "ヅ", romaji: "zu" },
+  { char: "デ", romaji: "de" },
+  { char: "ド", romaji: "do" },
+  { char: "ナ", romaji: "na" },
+  { char: "ニ", romaji: "ni" },
+  { char: "ヌ", romaji: "nu" },
+  { char: "ネ", romaji: "ne" },
+  { char: "ノ", romaji: "no" },
+  { char: "ハ", romaji: "ha" },
+  { char: "ヒ", romaji: "hi" },
+  { char: "フ", romaji: "fu" },
+  { char: "ヘ", romaji: "he" },
+  { char: "ホ", romaji: "ho" },
+  { char: "バ", romaji: "ba" },
+  { char: "ビ", romaji: "bi" },
+  { char: "ブ", romaji: "bu" },
+  { char: "ベ", romaji: "be" },
+  { char: "ボ", romaji: "bo" },
+  { char: "パ", romaji: "pa" },
+  { char: "ピ", romaji: "pi" },
+  { char: "プ", romaji: "pu" },
+  { char: "ペ", romaji: "pe" },
+  { char: "ポ", romaji: "po" },
+  { char: "マ", romaji: "ma" },
+  { char: "ミ", romaji: "mi" },
+  { char: "ム", romaji: "mu" },
+  { char: "メ", romaji: "me" },
+  { char: "モ", romaji: "mo" },
+  { char: "ヤ", romaji: "ya" },
+  { char: "", romaji: "" },
+  { char: "ユ", romaji: "yu" },
+  { char: "", romaji: "" },
+  { char: "ヨ", romaji: "yo" },
+  { char: "ラ", romaji: "ra" },
+  { char: "リ", romaji: "ri" },
+  { char: "ル", romaji: "ru" },
+  { char: "レ", romaji: "re" },
+  { char: "ロ", romaji: "ro" },
+  { char: "ワ", romaji: "wa" },
+  { char: "", romaji: "" },
+  { char: "", romaji: "" },
+  { char: "", romaji: "" },
+  { char: "ヲ", romaji: "wo" },
+  { char: "ン", romaji: "n" },
+  { char: "", romaji: "" },
+  { char: "", romaji: "" },
+  { char: "", romaji: "" },
+  { char: "", romaji: "" },
+]
+
+export function CharacterTables() {
+  const [activeTable, setActiveTable] = useState<"hiragana" | "katakana">("hiragana")
+  const [selectedCharacter, setSelectedCharacter] = useState<{ char: string; romaji: string } | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const currentData = activeTable === "hiragana" ? hiraganaData : katakanaData
+
+  const handleCharacterClick = (char: string, romaji: string) => {
+    if (char) {
+      setSelectedCharacter({ char, romaji })
+      setIsModalOpen(true)
+    }
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="text-center space-y-4">
+        <h1 className="text-3xl font-bold text-foreground">Tabelas de Caracteres</h1>
+        <div className="flex justify-center gap-2">
+          <Button
+            variant={activeTable === "hiragana" ? "default" : "outline"}
+            onClick={() => setActiveTable("hiragana")}
+          >
+            Hiragana
+          </Button>
+          <Button
+            variant={activeTable === "katakana" ? "default" : "outline"}
+            onClick={() => setActiveTable("katakana")}
+          >
+            Katakana
+          </Button>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-center text-2xl">
+            {activeTable === "hiragana" ? "ひらがな (Hiragana)" : "カタカナ (Katakana)"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-5 gap-2">
+            {currentData.map((item, index) => (
+              <div
+                key={index}
+                className={`aspect-square border border-border rounded-lg flex flex-col items-center justify-center p-2 ${
+                  item.char
+                    ? "bg-card hover:bg-accent/20 transition-all duration-200 cursor-pointer hover:scale-105 hover:shadow-md"
+                    : "bg-transparent border-transparent"
+                }`}
+                onClick={() => handleCharacterClick(item.char, item.romaji)}
+              >
+                {item.char && (
+                  <>
+                    <div className="text-3xl font-bold text-foreground mb-1">{item.char}</div>
+                    <div className="text-sm text-muted-foreground">{item.romaji}</div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="text-center text-sm text-muted-foreground space-y-2">
+        <p>Clique em qualquer caractere para praticar a ordem de escrita!</p>
+        <p>Ou vá para "Praticando" no menu para testar seus conhecimentos!</p>
+      </div>
+
+      {selectedCharacter && (
+        <StrokeOrderModal
+          character={selectedCharacter.char}
+          romaji={selectedCharacter.romaji}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+    </div>
+  )
+}
+

@@ -1,0 +1,53 @@
+{
+  "name": "_nihongo-project",
+  "version": "1.0.0",
+  "description": "Backend para sistema de aprendizado de língua japonesa",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "dev:full": "node start-dev.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:db": "node test-mongodb.js",
+    "create:env": "node create-env.js",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "seed": "node scripts/seed.js",
+    "db:reset": "node scripts/resetDb.js"
+  },
+  "keywords": [
+    "japanese",
+    "learning",
+    "nihongo",
+    "education",
+    "api",
+    "express",
+    "mongodb"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "mongodb": "^6.18.0",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "compression": "^1.7.4",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "eslint": "^8.56.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}

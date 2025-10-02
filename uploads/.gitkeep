@@ -1,0 +1,3 @@
+# Este arquivo mantém a pasta uploads no git
+# Arquivos enviados pelos usuários serão ignorados pelo .gitignore
+

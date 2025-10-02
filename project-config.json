@@ -1,0 +1,46 @@
+{
+  "project": {
+    "name": "Nihongo Learning System",
+    "version": "1.0.0",
+    "description": "Sistema completo de aprendizado de língua japonesa",
+    "author": "Nihongo Team"
+  },
+  "backend": {
+    "port": 3001,
+    "host": "localhost",
+    "database": "mongodb://localhost:27017/nihongo_learning",
+    "framework": "Express.js",
+    "runtime": "Node.js"
+  },
+  "frontend": {
+    "port": 3000,
+    "host": "localhost",
+    "framework": "Next.js 15",
+    "ui": "React 19 + Tailwind CSS + shadcn/ui",
+    "language": "TypeScript"
+  },
+  "features": {
+    "authentication": true,
+    "lessons": ["hiragana", "katakana", "kanji", "grammar", "vocabulary"],
+    "quiz": true,
+    "progress": true,
+    "responsive": true
+  },
+  "scripts": {
+    "backend": {
+      "dev": "npm run dev",
+      "start": "npm start",
+      "test:db": "npm run test:db",
+      "create:env": "npm run create:env"
+    },
+    "frontend": {
+      "dev": "cd frontend/my-appexitcf && npm run dev",
+      "build": "cd frontend/my-appexitcf && npm run build",
+      "start": "cd frontend/my-appexitcf && npm start"
+    },
+    "full": {
+      "dev": "npm run dev:full"
+    }
+  }
+}
+
