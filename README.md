@@ -1,6 +1,6 @@
-# 🗾 Nihongo Learning - Sistema Completo
+# 🗾 Nihongo Learning
 
-Sistema completo de aprendizado de língua japonesa com backend em Node.js/Express/MongoDB e frontend em Next.js/React/TypeScript.
+Sistema simples de aprendizado de língua japonesa com backend em Node.js/Express/MongoDB e frontend em Next.js/React/TypeScript.
 
 ## 🚀 Características
 
