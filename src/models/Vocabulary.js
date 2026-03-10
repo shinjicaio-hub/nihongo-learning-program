@@ -1,4 +1,5 @@
 const { getDB } = require('../config/database');
+const { toObjectId } = require('../utils/objectId');
 
 class Vocabulary {
   constructor(vocabData) {
@@ -46,7 +47,7 @@ class Vocabulary {
   static async findById(id) {
     try {
       const db = getDB();
-      return await db.collection('vocabulary').findOne({ _id: id });
+      return await db.collection('vocabulary').findOne({ _id: toObjectId(id) });
     } catch (error) {
       throw error;
     }
@@ -56,7 +57,7 @@ class Vocabulary {
     try {
       const db = getDB();
       return await db.collection('vocabulary')
-        .find({ lesson_id: lessonId, isActive: true })
+        .find({ lesson_id: toObjectId(lessonId), isActive: true })
         .sort({ japanese: 1 })
         .toArray();
     } catch (error) {
@@ -116,7 +117,7 @@ class Vocabulary {
       updateData.updatedAt = new Date();
       
       const result = await db.collection('vocabulary').updateOne(
-        { _id: id },
+        { _id: toObjectId(id) },
         { $set: updateData }
       );
       
@@ -130,7 +131,7 @@ class Vocabulary {
     try {
       const db = getDB();
       const result = await db.collection('vocabulary').updateOne(
-        { _id: id },
+        { _id: toObjectId(id) },
         { $set: { isActive: false } }
       );
       

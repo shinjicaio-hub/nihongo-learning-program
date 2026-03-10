@@ -24,6 +24,7 @@ async function populateDatabase() {
         firstName: 'Admin',
         lastName: 'Sistema',
         level: 'advanced',
+        role: 'admin',
         createdAt: new Date(),
         lastLogin: new Date(),
         isActive: true,
@@ -261,56 +262,72 @@ async function populateDatabase() {
     
     console.log('📈 Criando progresso de usuários...');
     
-    // Progresso de usuários
+    // Progresso de usuários (campos em snake_case e nomes compatíveis com o modelo UserProgress)
+    const now = new Date();
     const userProgress = [
       {
-        userId: userResult.insertedIds[0], // admin
-        lessonId: lessonResult.insertedIds[0],
+        user_id: userResult.insertedIds[0], // admin
+        lesson_id: lessonResult.insertedIds[0],
         status: 'completed',
         score: 95,
-        completedAt: new Date(),
-        timeSpent: 25, // minutos
-        attempts: 1
+        completed_at: now,
+        time_spent: 25 * 60, // segundos (modelo usa segundos)
+        attempts: 1,
+        started_at: now,
+        last_accessed: now,
+        favorite: false
       },
       {
-        userId: userResult.insertedIds[1], // joao
-        lessonId: lessonResult.insertedIds[0],
+        user_id: userResult.insertedIds[1], // joao
+        lesson_id: lessonResult.insertedIds[0],
         status: 'in_progress',
         score: 0,
-        completedAt: null,
-        timeSpent: 15,
-        attempts: 1
+        completed_at: null,
+        time_spent: 15 * 60,
+        attempts: 1,
+        started_at: now,
+        last_accessed: now,
+        favorite: false
       },
       {
-        userId: userResult.insertedIds[1], // joao
-        lessonId: lessonResult.insertedIds[1],
+        user_id: userResult.insertedIds[1], // joao
+        lesson_id: lessonResult.insertedIds[1],
         status: 'not_started',
         score: 0,
-        completedAt: null,
-        timeSpent: 0,
-        attempts: 0
+        completed_at: null,
+        time_spent: 0,
+        attempts: 0,
+        started_at: now,
+        last_accessed: now,
+        favorite: false
       },
       {
-        userId: userResult.insertedIds[2], // maria
-        lessonId: lessonResult.insertedIds[0],
+        user_id: userResult.insertedIds[2], // maria
+        lesson_id: lessonResult.insertedIds[0],
         status: 'completed',
         score: 88,
-        completedAt: new Date(),
-        timeSpent: 30,
-        attempts: 2
+        completed_at: now,
+        time_spent: 30 * 60,
+        attempts: 2,
+        started_at: now,
+        last_accessed: now,
+        favorite: false
       },
       {
-        userId: userResult.insertedIds[2], // maria
-        lessonId: lessonResult.insertedIds[1],
+        user_id: userResult.insertedIds[2], // maria
+        lesson_id: lessonResult.insertedIds[1],
         status: 'completed',
         score: 92,
-        completedAt: new Date(),
-        timeSpent: 40,
-        attempts: 1
+        completed_at: now,
+        time_spent: 40 * 60,
+        attempts: 1,
+        started_at: now,
+        last_accessed: now,
+        favorite: false
       }
     ];
     
-    // Inserir progresso um por vez para evitar conflitos
+    // Inserir progresso um por vez para evitar conflitos de índice único (user_id, lesson_id)
     let progressCount = 0;
     for (const progress of userProgress) {
       try {

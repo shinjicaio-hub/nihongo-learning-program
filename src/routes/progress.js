@@ -1,6 +1,13 @@
 const express = require('express');
+const { ObjectId } = require('mongodb');
 const UserProgress = require('../models/UserProgress');
 const { authenticateToken, authorizeResource } = require('../middleware/auth');
+
+function toObjectId(id) {
+  if (id == null) return id;
+  if (typeof id === 'string' && /^[a-f0-9]{24}$/i.test(id)) return new ObjectId(id);
+  return id;
+}
 
 const router = express.Router();
 
@@ -81,10 +88,10 @@ router.post('/lesson/:lessonId', async (req, res) => {
         });
       }
     } else {
-      // Criar novo progresso
+      // Criar novo progresso (user_id e lesson_id normalizados para ObjectId no modelo)
       const progressData = {
         user_id: req.user._id,
-        lesson_id: lessonId,
+        lesson_id: toObjectId(lessonId) || lessonId,
         status: status || 'in_progress',
         score: score || 0,
         time_spent: timeSpent || 0,

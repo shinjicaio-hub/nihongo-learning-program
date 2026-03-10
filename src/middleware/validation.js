@@ -82,8 +82,8 @@ const validateUserUpdate = (req, res, next) => {
     errors.push('Sobrenome não pode estar vazio');
   }
 
-  // Validar nível se fornecido
-  if (level && !Object.values(config.levels).includes(level)) {
+  // Validar nível se fornecido (chaves: beginner, intermediate, advanced)
+  if (level && !Object.keys(config.levels).includes(level)) {
     errors.push('Nível inválido');
   }
 

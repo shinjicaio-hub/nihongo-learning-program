@@ -145,7 +145,7 @@ router.get('/:id/previous', async (req, res) => {
     }
 
     res.json({
-      success: false,
+      success: true,
       data: previousLesson
     });
   } catch (error) {
@@ -228,7 +228,8 @@ router.get('/category/:category', async (req, res) => {
     if (level) {
       lessons = await Lesson.findByLevelAndCategory(level, category);
     } else {
-      lessons = await Lesson.getAllActive().filter(lesson => lesson.category === category);
+      const allActive = await Lesson.getAllActive();
+      lessons = allActive.filter(lesson => lesson.category === category);
     }
     
     res.json({

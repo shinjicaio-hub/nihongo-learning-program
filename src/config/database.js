@@ -39,6 +39,9 @@ const createIndexes = async () => {
     // Índices para progresso do usuário
     await db.collection('user_progress').createIndex({ user_id: 1, lesson_id: 1 }, { unique: true });
     
+    // Índices para sessões de prática de kana
+    await db.collection('kana_practice_sessions').createIndex({ user_id: 1, createdAt: -1 });
+    
     console.log('Índices criados com sucesso!');
   } catch (error) {
     console.error('Erro ao criar índices:', error);
@@ -52,4 +55,18 @@ const getDB = () => {
   return db;
 };
 
-module.exports = { connectDB, getDB };
+/** Retorna a instância do DB ou null (não lança erro). Útil para health check. */
+const getDBSafe = () => db;
+
+/** Verifica se o MongoDB está conectado e responsivo (ping). */
+const checkConnection = async () => {
+  if (!db) return { connected: false, error: 'Banco não inicializado' };
+  try {
+    await db.command({ ping: 1 });
+    return { connected: true };
+  } catch (err) {
+    return { connected: false, error: err.message };
+  }
+};
+
+module.exports = { connectDB, getDB, getDBSafe, checkConnection };

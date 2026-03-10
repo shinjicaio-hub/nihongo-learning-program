@@ -1,4 +1,12 @@
 const { getDB } = require('../config/database');
+const { ObjectId } = require('mongodb');
+
+/** Converte string de 24 hex para ObjectId; mantém ObjectId; evita quebra quando ID vem da URL/API. */
+function toObjectId(id) {
+  if (id == null) return id;
+  if (typeof id === 'string' && /^[a-f0-9]{24}$/i.test(id)) return new ObjectId(id);
+  return id;
+}
 
 class UserProgress {
   constructor(progressData) {
@@ -18,18 +26,21 @@ class UserProgress {
   static async create(progressData) {
     try {
       const db = getDB();
-      
+      const userId = toObjectId(progressData.user_id);
+      const lessonId = toObjectId(progressData.lesson_id);
+      const normalized = { ...progressData, user_id: userId, lesson_id: lessonId };
+
       // Verificar se já existe progresso para este usuário e lição
       const existingProgress = await db.collection('user_progress').findOne({
-        user_id: progressData.user_id,
-        lesson_id: progressData.lesson_id
+        user_id: userId,
+        lesson_id: lessonId
       });
 
       if (existingProgress) {
         throw new Error('Progresso já existe para este usuário e lição');
       }
 
-      const progress = new UserProgress(progressData);
+      const progress = new UserProgress(normalized);
       const result = await db.collection('user_progress').insertOne(progress);
       progress._id = result.insertedId;
 
@@ -43,8 +54,8 @@ class UserProgress {
     try {
       const db = getDB();
       return await db.collection('user_progress').findOne({
-        user_id: userId,
-        lesson_id: lessonId
+        user_id: toObjectId(userId),
+        lesson_id: toObjectId(lessonId)
       });
     } catch (error) {
       throw error;
@@ -55,7 +66,7 @@ class UserProgress {
     try {
       const db = getDB();
       return await db.collection('user_progress')
-        .find({ user_id: userId })
+        .find({ user_id: toObjectId(userId) })
         .sort({ last_accessed: -1 })
         .toArray();
     } catch (error) {
@@ -73,7 +84,7 @@ class UserProgress {
       }
       
       const result = await db.collection('user_progress').updateOne(
-        { user_id: userId, lesson_id: lessonId },
+        { user_id: toObjectId(userId), lesson_id: toObjectId(lessonId) },
         { $set: updateData }
       );
       
@@ -87,7 +98,7 @@ class UserProgress {
     try {
       const db = getDB();
       const result = await db.collection('user_progress').updateOne(
-        { user_id: userId, lesson_id: lessonId },
+        { user_id: toObjectId(userId), lesson_id: toObjectId(lessonId) },
         { 
           $set: { 
             score: Math.max(score, 0), // Garantir que não seja negativo
@@ -106,7 +117,7 @@ class UserProgress {
     try {
       const db = getDB();
       const result = await db.collection('user_progress').updateOne(
-        { user_id: userId, lesson_id: lessonId },
+        { user_id: toObjectId(userId), lesson_id: toObjectId(lessonId) },
         { 
           $set: { 
             status: 'completed',
@@ -128,7 +139,7 @@ class UserProgress {
       const db = getDB();
       return await db.collection('user_progress')
         .find({ 
-          user_id: userId, 
+          user_id: toObjectId(userId), 
           status: 'completed' 
         })
         .sort({ completed_at: -1 })
@@ -143,7 +154,7 @@ class UserProgress {
       const db = getDB();
       return await db.collection('user_progress')
         .find({ 
-          user_id: userId, 
+          user_id: toObjectId(userId), 
           status: 'in_progress' 
         })
         .sort({ last_accessed: -1 })
@@ -158,7 +169,7 @@ class UserProgress {
       const db = getDB();
       return await db.collection('user_progress')
         .find({ 
-          user_id: userId, 
+          user_id: toObjectId(userId), 
           favorite: true 
         })
         .sort({ last_accessed: -1 })
@@ -173,7 +184,7 @@ class UserProgress {
       const db = getDB();
       
       const stats = await db.collection('user_progress').aggregate([
-        { $match: { user_id: userId } },
+        { $match: { user_id: toObjectId(userId) } },
         {
           $group: {
             _id: null,

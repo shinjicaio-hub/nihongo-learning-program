@@ -5,7 +5,7 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
-const { connectDB } = require('./config/database');
+const { connectDB, checkConnection } = require('./config/database');
 const routes = require('./routes');
 const { errorHandler, notFoundHandler } = require('./utils/errorHandler');
 
@@ -65,28 +65,33 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Middleware para servir arquivos estáticos
 app.use('/uploads', express.static('uploads'));
 
-// Conectar ao banco de dados
-connectDB();
+// Front-end: página principal e assets (login, histórico, aba Banco de Dados)
+const path = require('path');
+const publicDir = path.join(__dirname, '..', 'public');
 
-// Rota de teste
+// Página principal (definida antes do static para garantir que GET / devolva o site)
 app.get('/', (req, res) => {
-  res.json({ 
-    success: true,
-    message: 'Bem-vindo à API de Aprendizado de Japonês',
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
-    status: 'online'
-  });
+  res.sendFile(path.join(publicDir, 'index.html'));
 });
 
-// Rota de status da API
-app.get('/health', (req, res) => {
+// CSS, JS e demais arquivos estáticos do site
+app.use(express.static(publicDir));
+
+// Rota de status da API e do MongoDB (usada pela aba Banco de Dados para status de conexão)
+app.get('/health', async (req, res) => {
+  const dbStatus = await checkConnection();
+  const healthy = dbStatus.connected;
   res.json({
     success: true,
-    status: 'healthy',
+    message: healthy ? 'API e MongoDB operacionais' : 'API online; MongoDB indisponível',
+    status: healthy ? 'healthy' : 'degraded',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    database: {
+      connected: dbStatus.connected,
+      ...(dbStatus.error && { error: dbStatus.error })
+    }
   });
 });
 
@@ -110,29 +115,39 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
-// Iniciar servidor
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📚 API disponível em: http://localhost:${PORT}/api`);
-  console.log(`🔍 Status da API: http://localhost:${PORT}/health`);
-});
+// Conectar ao banco e só então iniciar o servidor (evita status "desconectado" ao abrir a aba Banco de Dados)
+const startServer = async () => {
+  await connectDB();
+  const server = app.listen(PORT, () => {
+    console.log(`🚀 Servidor rodando na porta ${PORT}`);
+    console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`📚 API disponível em: http://localhost:${PORT}/api`);
+    console.log(`🔍 Status (API + MongoDB): http://localhost:${PORT}/health`);
+  });
+  return server;
+};
+
+let server;
+startServer()
+  .then(s => { server = s; })
+  .catch(err => {
+    console.error('Falha ao iniciar servidor:', err);
+    process.exit(1);
+  });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM recebido, encerrando servidor...');
-  server.close(() => {
-    console.log('Servidor encerrado.');
+const shutdown = () => {
+  console.log('Encerrando servidor...');
+  if (server) {
+    server.close(() => {
+      console.log('Servidor encerrado.');
+      process.exit(0);
+    });
+  } else {
     process.exit(0);
-  });
-});
-
-process.on('SIGINT', () => {
-  console.log('SIGINT recebido, encerrando servidor...');
-  server.close(() => {
-    console.log('Servidor encerrado.');
-    process.exit(0);
-  });
-});
+  }
+};
+process.on('SIGTERM', () => { shutdown(); });
+process.on('SIGINT', () => { shutdown(); });
 
 module.exports = app;

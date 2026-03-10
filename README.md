@@ -80,7 +80,12 @@ _nihongo-project/
 
 5. **Configure o banco de dados**
    - Certifique-se de que o MongoDB está rodando
-   - Popule o banco com dados de exemplo:
+   - **Banco limpo (sem registros) + login:** deixe o banco vazio e crie só um usuário admin para login:
+   ```bash
+   npm run db:clear
+   ```
+   Depois use **Login** com: `admin@nihongo.com` / `admin123` (POST `/api/auth/login`).
+   - **Banco com dados de exemplo:** lições, vocabulário e usuários de teste:
    ```bash
    node populate-database.js
    ```
@@ -100,9 +105,14 @@ _nihongo-project/
    ```
 
 ### Acesso ao Sistema
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:3001
-- **Health Check**: http://localhost:3001/health
+- **Site (front-end + back-end junto):** abra **http://localhost:3001/** no navegador. Você verá:
+  - **Front-end:** esta interface (login, abas).
+  - **Back-end:** a API na mesma origem (`/api/*`).
+  - **Banco de Dados:** aba "Banco de Dados" (após login como admin) para visualizar coleções e documentos do MongoDB.
+- **Health Check:** http://localhost:3001/health
+
+### Reset e testes do zero
+Para parar servidores, limpar o banco e subir tudo de novo para teste, siga o passo a passo em **[RESET_AND_TEST.md](RESET_AND_TEST.md)**.
 
 ## 🔧 Configuração
 

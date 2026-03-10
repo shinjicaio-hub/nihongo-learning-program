@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nihongo Learning — Kana, Lições e Estudo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Tela de Login -->
+    <div id="login-screen" class="screen">
+      <header class="header-simple">
+        <h1>🗾 Nihongo Learning</h1>
+        <p class="subtitle">Login para acessar o sistema</p>
+      </header>
+      <main class="login-box">
+        <form id="login-form">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required placeholder="ex: admin@nihongo.com">
+          <label for="password">Senha</label>
+          <input type="password" id="password" name="password" required placeholder="Senha">
+          <button type="submit" id="login-btn">Entrar</button>
+        </form>
+        <p id="login-error" class="error-msg" hidden></p>
+        <p class="hint">Após <code>npm run db:clear</code>: admin@nihongo.com / admin123</p>
+      </main>
+    </div>
+
+    <!-- App logado: navegação + conteúdo -->
+    <div id="logged-app" class="screen" hidden>
+      <header class="main-header">
+        <h1>🗾 Nihongo Learning</h1>
+        <nav class="tabs">
+          <button type="button" class="tab active" data-tab="inicio">Início</button>
+          <button type="button" class="tab" data-tab="kana">Kana</button>
+          <button type="button" class="tab" data-tab="licoes">Lições</button>
+          <button type="button" class="tab" data-tab="historico">Meu histórico</button>
+          <button type="button" class="tab" data-tab="banco">Banco de Dados</button>
+          <span class="user-info"><span id="user-email"></span> · <button type="button" id="logout-btn" class="link-btn">Sair</button></span>
+        </nav>
+      </header>
+
+      <main class="main-content">
+        <!-- Aba Início -->
+        <section id="tab-inicio" class="tab-panel active">
+          <div class="welcome-box">
+            <h2>Bem-vindo ao Nihongo Learning</h2>
+            <p>Use as abas acima para estudar:</p>
+            <ul>
+              <li><strong>Kana</strong> — Tabelas de Hiragana e Katakana para consulta e estudo.</li>
+              <li><strong>Lições</strong> — Conteúdo de lições (nível, categoria) e vocabulário.</li>
+              <li><strong>Meu histórico</strong> — Seu progresso nas lições (salvo no banco).</li>
+              <li><strong>Banco de Dados</strong> — Visualização do MongoDB (admin).</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- Aba Kana (Hiragana e Katakana) -->
+        <section id="tab-kana" class="tab-panel">
+          <h2>Kana — Hiragana e Katakana</h2>
+          <p class="muted">Customize a atividade, inicie a prática e seu resultado será salvo no banco.</p>
+          <!-- Customização da atividade -->
+          <div id="kana-customize" class="kana-practice-box">
+            <h3>Customizar atividade</h3>
+            <p class="muted">Escolha o alfabeto e as sílabas. Depois inicie a atividade.</p>
+            <div class="customize-section">
+              <label class="customize-label">Alfabeto</label>
+              <div class="practice-options">
+                <label><input type="radio" name="kana-alphabet" value="hiragana" checked> Hiragana</label>
+                <label><input type="radio" name="kana-alphabet" value="katakana"> Katakana</label>
+                <label><input type="radio" name="kana-alphabet" value="both"> Ambos</label>
+              </div>
+            </div>
+            <div class="customize-section">
+              <label class="customize-label">Sílabas (marque as que quiser praticar)</label>
+              <div id="kana-syllables" class="syllables-checkboxes"></div>
+              <button type="button" id="kana-select-all" class="link-btn small">Marcar todas</button>
+            </div>
+            <button type="button" id="kana-start-btn" class="btn-primary btn-lg">Iniciar atividade</button>
+          </div>
+          <!-- Durante a prática (oculto até iniciar) -->
+          <div id="kana-activity" class="kana-practice-box" hidden>
+            <h3>Qual o romaji?</h3>
+            <div class="practice-card">
+              <div id="practice-char" class="practice-char">?</div>
+              <input type="text" id="practice-answer" class="practice-input" placeholder="Digite o romaji" autocomplete="off">
+              <div class="practice-actions">
+                <button type="button" id="practice-check-btn" class="btn-primary">Verificar</button>
+                <button type="button" id="practice-next-btn" class="btn-secondary">Próximo</button>
+              </div>
+              <p id="practice-feedback" class="practice-feedback" hidden></p>
+              <p id="practice-score" class="practice-score muted"></p>
+            </div>
+            <button type="button" id="kana-finish-btn" class="btn-secondary">Terminar sessão e salvar</button>
+          </div>
+          <!-- Resumo após terminar (oculto) -->
+          <div id="kana-summary" class="kana-practice-box" hidden>
+            <h3>Resultado salvo</h3>
+            <p id="kana-summary-text" class="muted"></p>
+            <button type="button" id="kana-new-activity" class="btn-primary">Nova atividade</button>
+          </div>
+          <hr class="section-hr">
+          <div class="kana-tabs">
+            <button type="button" class="kana-tab active" data-kana="hiragana">Hiragana</button>
+            <button type="button" class="kana-tab" data-kana="katakana">Katakana</button>
+          </div>
+          <div id="kana-hiragana" class="kana-panel active">
+            <h3>Hiragana (ひらがな)</h3>
+            <div id="hiragana-table" class="kana-grid-wrap"></div>
+          </div>
+          <div id="kana-katakana" class="kana-panel">
+            <h3>Katakana (カタカナ)</h3>
+            <div id="katakana-table" class="kana-grid-wrap"></div>
+          </div>
+        </section>
+
+        <!-- Aba Lições -->
+        <section id="tab-licoes" class="tab-panel">
+          <h2>Lições</h2>
+          <p class="muted">Conteúdo do curso. Clique em uma lição para ver detalhes.</p>
+          <div id="licoes-list" class="licoes-list"></div>
+          <div id="licao-detail" class="licao-detail" hidden>
+            <button type="button" id="licao-back-btn" class="back-btn">← Voltar à lista</button>
+            <div id="licao-detail-content"></div>
+          </div>
+        </section>
+
+        <!-- Aba Meu histórico -->
+        <section id="tab-historico" class="tab-panel">
+          <h2>Meu histórico (salvo por usuário)</h2>
+          <p class="muted">Progresso nas lições e estatísticas vindos do MongoDB.</p>
+          <div id="historico-stats" class="stats-row"></div>
+          <div id="historico-list" class="content-box"></div>
+        </section>
+
+        <!-- Aba Banco de Dados -->
+        <section id="tab-banco" class="tab-panel">
+          <h2>Banco de Dados (MongoDB)</h2>
+          <div id="db-status" class="status-box">
+            <span class="status-label">Conexão:</span>
+            <span id="db-status-text">verificando...</span>
+          </div>
+          <div id="banco-admin-only" class="content-box" hidden>
+            <p class="muted">Coleções e documentos. Clique em uma coleção para ver os registros.</p>
+            <div id="collections-list" class="collections-list"></div>
+            <div id="collection-detail" class="collection-detail" hidden>
+              <h3 id="collection-detail-title"></h3>
+              <div id="collection-docs" class="docs-table-wrap"></div>
+            </div>
+          </div>
+          <div id="banco-not-admin" class="content-box" hidden>
+            <p>Acesso à visualização do banco é apenas para usuários administradores. O status da conexão acima é público.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

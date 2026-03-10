@@ -5,6 +5,7 @@ const lessonRoutes = require('./lessons');
 const vocabularyRoutes = require('./vocabulary');
 const progressRoutes = require('./progress');
 const adminRoutes = require('./admin');
+const kanaRoutes = require('./kana');
 
 const router = express.Router();
 
@@ -25,6 +26,9 @@ router.use('/progress', progressRoutes);
 
 // Rotas administrativas (protegidas)
 router.use('/admin', adminRoutes);
+
+// Prática de kana (aparece um kana, escrever o romaji)
+router.use('/kana', kanaRoutes);
 
 // Rota de status da API
 router.get('/status', (req, res) => {

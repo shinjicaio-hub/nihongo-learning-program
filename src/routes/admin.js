@@ -1,16 +1,35 @@
 const express = require('express');
-const { getDB } = require('../config/database');
+const { getDB, checkConnection } = require('../config/database');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const router = express.Router();
 
-// Middleware para verificar se é admin (por enquanto, vamos permitir acesso direto)
-const isAdmin = (req, res, next) => {
-  // Por enquanto, permitir acesso direto para desenvolvimento
-  // Em produção, implementar autenticação adequada
-  next();
-};
+// Rotas administrativas: exigir autenticação e role admin
+router.use(authenticateToken);
+router.use(requireAdmin);
+
+// Status de conexão do MongoDB (para a aba Banco de Dados exibir indicador correto)
+router.get('/database/status', async (req, res) => {
+  try {
+    const dbStatus = await checkConnection();
+    res.json({
+      success: true,
+      database: {
+        connected: dbStatus.connected,
+        ...(dbStatus.error && { error: dbStatus.error })
+      },
+      message: dbStatus.connected ? 'MongoDB conectado' : (dbStatus.error || 'MongoDB indisponível')
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      database: { connected: false, error: error.message },
+      message: 'Erro ao verificar conexão'
+    });
+  }
+});
 
 // Rota para listar todas as collections
-router.get('/collections', isAdmin, async (req, res) => {
+router.get('/collections', async (req, res) => {
   try {
     const db = getDB();
     const collections = await db.listCollections().toArray();
@@ -41,7 +60,7 @@ router.get('/collections', isAdmin, async (req, res) => {
 });
 
 // Rota para buscar dados de uma collection específica
-router.get('/collections/:collectionName', isAdmin, async (req, res) => {
+router.get('/collections/:collectionName', async (req, res) => {
   try {
     const { collectionName } = req.params;
     const { page = 1, limit = 20, search = '' } = req.query;
@@ -106,7 +125,7 @@ router.get('/collections/:collectionName', isAdmin, async (req, res) => {
 });
 
 // Rota para obter estatísticas gerais
-router.get('/stats', isAdmin, async (req, res) => {
+router.get('/stats', async (req, res) => {
   try {
     const db = getDB();
     
@@ -155,21 +174,18 @@ router.get('/stats', isAdmin, async (req, res) => {
 });
 
 // Rota para obter detalhes de um documento específico
-router.get('/collections/:collectionName/:documentId', isAdmin, async (req, res) => {
+router.get('/collections/:collectionName/:documentId', async (req, res) => {
   try {
     const { collectionName, documentId } = req.params;
     const db = getDB();
+    const { ObjectId } = require('mongodb');
     
-    // Converter string ID para ObjectId se necessário
-    let query = { _id: documentId };
-    try {
-      const { ObjectId } = require('mongodb');
-      query = { _id: new ObjectId(documentId) };
-    } catch (e) {
-      // Se não conseguir converter para ObjectId, usar como string
+    // MongoDB usa ObjectId como _id; converter string válida para ObjectId
+    let queryId = documentId;
+    if (typeof documentId === 'string' && /^[a-f0-9]{24}$/i.test(documentId)) {
+      queryId = new ObjectId(documentId);
     }
-    
-    const document = await db.collection(collectionName).findOne(query);
+    const document = await db.collection(collectionName).findOne({ _id: queryId });
     
     if (!document) {
       return res.status(404).json({

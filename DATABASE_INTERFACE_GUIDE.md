@@ -105,15 +105,23 @@ Retorna estatísticas gerais do sistema
 ### **GET** `/api/admin/collections/:name/:id`
 Busca um documento específico por ID
 
+### **GET** `/health` (público)
+Status da API e do MongoDB. Use para exibir o indicador de conexão na aba Banco de Dados.
+- `status`: `"healthy"` (API + MongoDB OK) ou `"degraded"` (MongoDB indisponível)
+- `database.connected`: `true` ou `false`
+- `message`: texto descritivo
+
+### **GET** `/api/admin/database/status` (requer admin)
+Retorna apenas o status do MongoDB para a aba Banco de Dados (quando o usuário já está logado como admin).
+- `database.connected`: `true` ou `false`
+- `message`: "MongoDB conectado" ou motivo do erro
+
 ## 🚨 Solução de Problemas
 
-### ❌ **Erro de Conexão**
-```
-Verifique se:
-1. Backend está rodando na porta 3001
-2. MongoDB está conectado
-3. Arquivo .env está configurado
-```
+### ❌ **Erro de Conexão / Status "desconectado" na aba Banco de Dados**
+- O backend agora só sobe **depois** de conectar ao MongoDB, e o endpoint `GET /health` inclui `database.connected`.
+- Na interface: chame `GET http://localhost:3001/health` e exiba "Conectado" quando `data.database.connected === true`.
+- Verifique: Backend na porta 3001, MongoDB rodando, `.env` com `MONGODB_URI` correto.
 
 ### ❌ **Dados Não Carregam**
 ```

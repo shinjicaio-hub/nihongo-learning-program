@@ -1,4 +1,5 @@
 const { getDB } = require('../config/database');
+const { toObjectId } = require('../utils/objectId');
 
 class Lesson {
   constructor(lessonData) {
@@ -45,7 +46,7 @@ class Lesson {
   static async findById(id) {
     try {
       const db = getDB();
-      return await db.collection('lessons').findOne({ _id: id });
+      return await db.collection('lessons').findOne({ _id: toObjectId(id) });
     } catch (error) {
       throw error;
     }
@@ -93,7 +94,7 @@ class Lesson {
       updateData.updatedAt = new Date();
       
       const result = await db.collection('lessons').updateOne(
-        { _id: id },
+        { _id: toObjectId(id) },
         { $set: updateData }
       );
       
@@ -107,7 +108,7 @@ class Lesson {
     try {
       const db = getDB();
       const result = await db.collection('lessons').updateOne(
-        { _id: id },
+        { _id: toObjectId(id) },
         { $set: { isActive: false } }
       );
       

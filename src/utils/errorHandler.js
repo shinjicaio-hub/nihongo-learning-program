@@ -223,9 +223,9 @@ const handleUnhandledRejections = () => {
   });
 };
 
-// Inicializar handlers de erros não capturados
-handleUncaughtExceptions();
-handleUnhandledRejections();
+// Nota: handlers de uncaughtException/unhandledRejection são registrados em app.js
+// para evitar duplicação. Use handleUncaughtExceptions/handleUnhandledRejections
+// apenas se não estiver usando app.js como entry point.
 
 module.exports = {
   AppError,

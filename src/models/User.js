@@ -1,23 +1,35 @@
 const { getDB } = require('../config/database');
 const bcrypt = require('bcrypt');
 const config = require('../config/config');
+const { toObjectId } = require('../utils/objectId');
 
 class User {
   constructor(userData) {
-    this.username = userData.username;
-    this.email = userData.email;
-    this.password = userData.password;
-    this.firstName = userData.firstName || '';
-    this.lastName = userData.lastName || '';
-    this.level = userData.level || 'beginner';
-    this.createdAt = new Date();
-    this.lastLogin = null;
-    this.isActive = true;
-    this.preferences = {
-      studyTime: 30, // minutos por dia
+    const data = userData || {};
+    this.username = data.username;
+    this.email = data.email;
+    this.password = data.password;
+    this.firstName = data.firstName || '';
+    this.lastName = data.lastName || '';
+    this.level = data.level || 'beginner';
+    this.role = data.role || 'user'; // user | admin
+    this.createdAt = data.createdAt || new Date();
+    this.lastLogin = data.lastLogin ?? null;
+    this.isActive = data.isActive !== undefined ? data.isActive : true;
+    this.preferences = data.preferences || {
+      studyTime: 30,
       notifications: true,
       language: 'pt-BR'
     };
+    if (data._id) this._id = data._id;
+  }
+
+  /** Converte documento do MongoDB em instância de User (com validatePassword e toJSON). */
+  static docToUser(doc) {
+    if (!doc) return null;
+    const user = new User(doc);
+    user._id = doc._id;
+    return user;
   }
 
   static async create(userData) {
@@ -57,7 +69,8 @@ class User {
   static async findByEmail(email) {
     try {
       const db = getDB();
-      return await db.collection('users').findOne({ email });
+      const doc = await db.collection('users').findOne({ email });
+      return User.docToUser(doc);
     } catch (error) {
       throw error;
     }
@@ -66,7 +79,8 @@ class User {
   static async findById(id) {
     try {
       const db = getDB();
-      return await db.collection('users').findOne({ _id: id });
+      const doc = await db.collection('users').findOne({ _id: toObjectId(id) });
+      return User.docToUser(doc);
     } catch (error) {
       throw error;
     }
@@ -76,7 +90,7 @@ class User {
     try {
       const db = getDB();
       const result = await db.collection('users').updateOne(
-        { _id: userId },
+        { _id: toObjectId(userId) },
         { $set: updateData }
       );
       return result.modifiedCount > 0;
@@ -89,7 +103,7 @@ class User {
     try {
       const db = getDB();
       const result = await db.collection('users').updateOne(
-        { _id: userId },
+        { _id: toObjectId(userId) },
         { $set: { level: newLevel } }
       );
       return result.modifiedCount > 0;
@@ -102,7 +116,7 @@ class User {
     try {
       const db = getDB();
       await db.collection('users').updateOne(
-        { _id: userId },
+        { _id: toObjectId(userId) },
         { $set: { lastLogin: new Date() } }
       );
     } catch (error) {
