@@ -191,22 +191,54 @@ router.put('/lesson/:lessonId/favorite', async (req, res) => {
         message: 'Campo favorite deve ser um booleano'
       });
     }
-    
-    const success = await UserProgress.updateProgress(req.user._id, lessonId, { favorite });
-    
-    if (success) {
-      const progress = await UserProgress.findByUserAndLesson(req.user._id, lessonId);
-      res.json({
+
+    let progress = await UserProgress.findByUserAndLesson(req.user._id, lessonId);
+
+    if (!progress) {
+      if (!favorite) {
+        return res.json({
+          success: true,
+          message: 'Lição já não estava favoritada.',
+          data: {
+            user_id: req.user._id,
+            lesson_id: toObjectId(lessonId) || lessonId,
+            favorite: false
+          }
+        });
+      }
+
+      progress = await UserProgress.create({
+        user_id: req.user._id,
+        lesson_id: toObjectId(lessonId) || lessonId,
+        status: 'in_progress',
+        score: 0,
+        time_spent: 0,
+        notes: null,
+        favorite: true
+      });
+
+      return res.json({
         success: true,
-        message: `Lição ${favorite ? 'marcada' : 'desmarcada'} como favorita!`,
+        message: 'Lição marcada como favorita!',
         data: progress
       });
-    } else {
-      res.status(400).json({
+    }
+
+    const success = await UserProgress.updateProgress(req.user._id, lessonId, { favorite });
+
+    if (!success) {
+      return res.status(400).json({
         success: false,
         message: 'Erro ao atualizar favorito'
       });
     }
+
+    progress = await UserProgress.findByUserAndLesson(req.user._id, lessonId);
+    res.json({
+      success: true,
+      message: `Lição ${favorite ? 'marcada' : 'desmarcada'} como favorita!`,
+      data: progress
+    });
   } catch (error) {
     res.status(500).json({
       success: false,

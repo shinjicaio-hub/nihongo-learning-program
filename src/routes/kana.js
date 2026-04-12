@@ -1,14 +1,20 @@
 /**
  * Rotas para prática de kana (hiragana/katakana).
  * GET /random — retorna um kana aleatório (char, romaji, type).
+ * GET /activity — retorna sessões recentes do usuário autenticado.
  * POST /session — registra resultado da sessão de prática (autenticado).
  */
 
 const express = require('express');
 const { getDB } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
-const { ObjectId } = require('mongodb');
 const router = express.Router();
+
+function getPositiveInt(value, fallback) {
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed < 1) return fallback;
+  return parsed;
+}
 
 // Lista plana de kanas (char, romaji, type) — mesma base usada no front
 const KANA_LIST = [
@@ -43,6 +49,40 @@ router.get('/random', (req, res) => {
     else if (type === 'katakana') pool = KANA_LIST.filter(k => k.type === 'katakana');
     const kana = pool[Math.floor(Math.random() * pool.length)];
     res.json({ success: true, data: kana });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/** GET /api/kana/activity — retorna sessões recentes para compor a ofensiva */
+router.get('/activity', authenticateToken, async (req, res) => {
+  try {
+    const days = Math.min(getPositiveInt(req.query.days, 30), 365);
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    since.setDate(since.getDate() - (days - 1));
+
+    const db = getDB();
+    const sessions = await db.collection('kana_practice_sessions')
+      .find(
+        {
+          user_id: req.user._id,
+          createdAt: { $gte: since }
+        },
+        {
+          projection: { _id: 0, createdAt: 1 }
+        }
+      )
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    res.json({
+      success: true,
+      data: {
+        days,
+        sessions
+      }
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

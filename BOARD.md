@@ -123,6 +123,7 @@ Etapas realizadas no projeto, organizadas por fases e operações **CRUD** (Crea
 | Operação | Status | Rota / Ação |
 |----------|--------|-------------|
 | **R** | ✅ | `GET /api/kana/random` — kana aleatório (query: type) |
+| **R** | ✅ | `GET /api/kana/activity` — sessões recentes do usuário (autenticado; query `days`, padrão 30, máx. 365) para suporte à ofensiva na aba Início |
 | **C** | ✅ | `POST /api/kana/session` — registrar sessão de prática (autenticado) |
 
 Front-end: prática com hiragana/katakana, baralho (mostrar todos antes de repetir), contagem de acertos/total, delay ao errar, Enter para verificar/próximo.
@@ -149,6 +150,10 @@ Front-end: prática com hiragana/katakana, baralho (mostrar todos antes de repet
 |-------|--------|-----------|
 | Login / Registro | ✅ | Tela de login, token no `localStorage` |
 | Abas principais | ✅ | Início, Kana, Lições, Histórico, Banco de Dados |
+| Cabeçalho logado | ✅ | Bloco de marca (`brand-block`), subtítulo, abas com `aria-label`, botão Sair |
+| Aba Início — ofensiva | ✅ | Contagem em destaque de dias **consecutivos** com atividade nos últimos 30 dias (calendário local); dados de `GET /api/progress/my-progress` (`last_accessed`) + `GET /api/kana/activity?days=30` (`createdAt` das sessões); estados visuais vazios/erro e faixas por tamanho da ofensiva |
+| Aba Início — retomada | ✅ | Card “Continuar de onde parou”: primeira lição com status `in_progress` em `my-progress`; botão abre a aba Lições e o detalhe da lição |
+| Aba Início — teste manual | ✅ | Painel opcional para simular ofensiva 0–30 (demonstração) via `localStorage`; “Voltar ao automático” restaura o cálculo real |
 | Prática de Kana | ✅ | Customização (alfabeto/sílabas), atividade, resumo, baralho, contagem, Enter |
 | Listagem de lições | ✅ | Lista e detalhe de lição |
 | Histórico | ✅ | Exibição de progresso/sessões |
@@ -177,9 +182,9 @@ Front-end: prática com hiragana/katakana, baralho (mostrar todos antes de repet
 | Lessons | (seed/admin) | ✅ | — | — |
 | Vocabulary | (seed/admin) | ✅ | — | — |
 | Progress | ✅ | ✅ | ✅ | — |
-| Kana sessions | ✅ | ✅ (random) | — | — |
+| Kana sessions | ✅ | ✅ (random, activity) | — | — |
 | Admin (DB) | — | ✅ | — | — |
 
 ---
 
-*Última atualização do board: conforme estado atual do repositório.*
+*Última atualização do board: aba Início (ofensiva, retomada, teste manual), `GET /api/kana/activity`, cabeçalho logado.*

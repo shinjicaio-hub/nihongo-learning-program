@@ -30,20 +30,58 @@
     <!-- App logado: navegação + conteúdo -->
     <div id="logged-app" class="screen" hidden>
       <header class="main-header">
-        <h1>🗾 Nihongo Learning</h1>
-        <nav class="tabs">
+        <div class="main-header-top">
+          <div class="brand-block">
+            <span class="brand-badge">おはよう</span>
+            <h1>🗾 Nihongo Learning</h1>
+            <p class="main-header-subtitle">Treine kana, acompanhe sua ofensiva e avance no seu ritmo com uma navegação mais moderna.</p>
+          </div>
+          <span class="user-info"><span id="user-email"></span><button type="button" id="logout-btn" class="link-btn">Sair</button></span>
+        </div>
+        <nav class="tabs" aria-label="Navegação principal">
           <button type="button" class="tab active" data-tab="inicio">Início</button>
           <button type="button" class="tab" data-tab="kana">Kana</button>
           <button type="button" class="tab" data-tab="licoes">Lições</button>
           <button type="button" class="tab" data-tab="historico">Meu histórico</button>
           <button type="button" class="tab" data-tab="banco">Banco de Dados</button>
-          <span class="user-info"><span id="user-email"></span> · <button type="button" id="logout-btn" class="link-btn">Sair</button></span>
         </nav>
       </header>
 
       <main class="main-content">
         <!-- Aba Início -->
         <section id="tab-inicio" class="tab-panel active">
+          <div id="inicio-streak-card" class="home-streak" aria-live="polite">
+            <span class="streak-label">Ofensiva</span>
+            <strong id="inicio-streak-value" class="streak-value">--</strong>
+            <p id="inicio-streak-note" class="streak-note">Carregando atividade dos últimos 30 dias...</p>
+          </div>
+          <div id="inicio-resume-card" class="home-resume-card" aria-live="polite">
+            <div class="home-resume-copy">
+              <span class="resume-label">Continuar de onde parou</span>
+              <strong id="inicio-resume-title" class="resume-title">Carregando sua retomada...</strong>
+              <p id="inicio-resume-meta" class="resume-meta" hidden></p>
+              <p id="inicio-resume-description" class="resume-description">Buscando a lição mais recente em andamento para você continuar.</p>
+            </div>
+            <button type="button" id="inicio-resume-btn" class="btn-primary">Carregando...</button>
+          </div>
+          <div id="inicio-streak-test-panel" class="home-streak-test">
+            <label for="inicio-streak-manual-input" class="customize-label">Teste manual da ofensiva</label>
+            <p class="muted">Defina um valor entre 0 e 30 só para demonstração. Depois, volte ao modo automático.</p>
+            <div class="home-streak-test-controls">
+              <input
+                type="number"
+                id="inicio-streak-manual-input"
+                class="home-streak-test-input"
+                min="0"
+                max="30"
+                step="1"
+                placeholder="Ex: 7"
+              >
+              <button type="button" id="inicio-streak-manual-apply" class="btn-secondary">Aplicar teste</button>
+              <button type="button" id="inicio-streak-manual-reset" class="link-btn">Voltar ao automático</button>
+            </div>
+            <p id="inicio-streak-test-status" class="muted" hidden></p>
+          </div>
           <div class="welcome-box">
             <h2>Bem-vindo ao Nihongo Learning</h2>
             <p>Use as abas acima para estudar:</p>
