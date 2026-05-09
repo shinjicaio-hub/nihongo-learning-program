@@ -53,7 +53,7 @@
   const loginError = document.getElementById('login-error');
   const loginBtn = document.getElementById('login-btn');
   const ACTIVE_TAB_STORAGE_KEY = 'nihongo_active_tab';
-  const VALID_TAB_IDS = ['inicio', 'kana', 'licoes', 'historico', 'banco'];
+  const VALID_TAB_IDS = ['inicio', 'kana', 'licoes', 'vocabulario', 'historico', 'banco'];
 
   function showLogin() {
     loginScreen.hidden = false;
@@ -127,6 +127,7 @@
     if (nextTabId === 'banco') loadBanco();
     if (nextTabId === 'kana') renderKana();
     if (nextTabId === 'licoes') loadLicoes();
+    if (nextTabId === 'vocabulario') resetVocabTab();
   }
 
   document.querySelectorAll('.tab').forEach(btn => {
@@ -139,6 +140,10 @@
   let inicioLoadRequestId = 0;
   let inicioResumeLessonId = '';
   let cachedFavoriteLessonIds = new Set();
+  let cachedLessonsList = [];
+  let cachedLessonProgressById = new Map();
+  let activeLessonsFilter = 'all';
+  let licoesFiltersBound = false;
 
   function getManualStreakDays() {
     try {
@@ -195,6 +200,7 @@
   function renderManualStreak(days) {
     setInicioTestStatus('Modo de teste ativo. A ofensiva exibida está usando o valor manual.');
     setInicioStreakState(days, getManualStreakNote(days), days === 0 ? 'empty' : '');
+    renderEmptyHeatmap('Modo de teste ativo: heatmap pausado.');
   }
 
   function bindInicioTestControls() {
@@ -348,18 +354,90 @@
     }
   }
 
+  function getLessonStatusInfo(progress) {
+    if (!progress) return { status: 'not_started', label: 'Não iniciada' };
+    if (progress.status === 'completed') return { status: 'completed', label: 'Concluída' };
+    if (progress.status === 'in_progress') return { status: 'in_progress', label: 'Em andamento' };
+    return { status: 'not_started', label: 'Não iniciada' };
+  }
+
   function renderLessonCard(lesson) {
     const lessonId = getEntityId((lesson && (lesson._id || lesson.id)) || '');
     const isFavorite = cachedFavoriteLessonIds.has(lessonId);
+    const progress = cachedLessonProgressById.get(lessonId);
+    const statusInfo = getLessonStatusInfo(progress);
+    const scoreSuffix = progress && typeof progress.score === 'number' && progress.score > 0
+      ? ' · Nota ' + Math.round(progress.score)
+      : '';
     return (
       '<article class="licao-card" data-id="' + escapeHtml(lessonId) + '">' +
         getFavoriteButtonMarkup(lessonId, isFavorite, 'licao-card-favorite') +
         '<button type="button" class="licao-card-open" data-id="' + escapeHtml(lessonId) + '">' +
           '<h4>' + escapeHtml((lesson && lesson.title) || 'Sem título') + '</h4>' +
           '<span class="meta">' + escapeHtml([lesson && lesson.level, lesson && lesson.category].filter(Boolean).join(' · ')) + '</span>' +
+          '<span class="licao-status status-' + statusInfo.status + '">' + escapeHtml(statusInfo.label + scoreSuffix) + '</span>' +
         '</button>' +
       '</article>'
     );
+  }
+
+  function bindLicoesFilters() {
+    if (licoesFiltersBound) return;
+    licoesFiltersBound = true;
+    document.querySelectorAll('.licoes-filter').forEach(buttonEl => {
+      buttonEl.addEventListener('click', () => {
+        activeLessonsFilter = buttonEl.dataset.filter || 'all';
+        document.querySelectorAll('.licoes-filter').forEach(b => {
+          const isActive = b === buttonEl;
+          b.classList.toggle('active', isActive);
+          b.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+        applyLessonsFilter();
+      });
+    });
+  }
+
+  function applyLessonsFilter() {
+    const listEl = document.getElementById('licoes-list');
+    const emptyEl = document.getElementById('licoes-empty-filter');
+    if (!listEl) return;
+    let filtered = cachedLessonsList;
+    if (activeLessonsFilter === 'favorites') {
+      filtered = cachedLessonsList.filter(lesson => {
+        const id = getEntityId((lesson && (lesson._id || lesson.id)) || '');
+        return cachedFavoriteLessonIds.has(id);
+      });
+    } else if (activeLessonsFilter === 'in_progress') {
+      filtered = cachedLessonsList.filter(lesson => {
+        const id = getEntityId((lesson && (lesson._id || lesson.id)) || '');
+        const progress = cachedLessonProgressById.get(id);
+        return progress && progress.status === 'in_progress';
+      });
+    } else if (activeLessonsFilter === 'completed') {
+      filtered = cachedLessonsList.filter(lesson => {
+        const id = getEntityId((lesson && (lesson._id || lesson.id)) || '');
+        const progress = cachedLessonProgressById.get(id);
+        return progress && progress.status === 'completed';
+      });
+    }
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = '';
+      if (emptyEl) {
+        emptyEl.hidden = false;
+        emptyEl.textContent = activeLessonsFilter === 'favorites'
+          ? 'Nenhuma lição favoritada ainda. Toque na estrela para favoritar.'
+          : activeLessonsFilter === 'in_progress'
+            ? 'Nenhuma lição em andamento. Abra uma lição para começar.'
+            : activeLessonsFilter === 'completed'
+              ? 'Nenhuma lição concluída ainda. Marque uma como concluída para vê-la aqui.'
+              : 'Nenhuma lição encontrada.';
+      }
+      return;
+    }
+    if (emptyEl) emptyEl.hidden = true;
+    listEl.innerHTML = filtered.map(renderLessonCard).join('');
+    bindLessonCardActions(listEl);
   }
 
   function bindLessonCardActions(listEl) {
@@ -502,12 +580,15 @@
     const today = startOfLocalDay(new Date());
     const windowStart = shiftLocalDay(today, -(windowDays - 1));
     const activeDayKeys = new Set();
+    const dayCounts = new Map();
 
     activityTimestamps.forEach(timestamp => {
       const date = startOfLocalDay(timestamp);
       if (!date || date < windowStart || date > today) return;
       const dayKey = getDayKey(date);
-      if (dayKey) activeDayKeys.add(dayKey);
+      if (!dayKey) return;
+      activeDayKeys.add(dayKey);
+      dayCounts.set(dayKey, (dayCounts.get(dayKey) || 0) + 1);
     });
 
     let mostRecentDay = null;
@@ -529,8 +610,67 @@
     return {
       streak,
       activeDays: activeDayKeys.size,
-      mostRecentDay
+      mostRecentDay,
+      dayCounts
     };
+  }
+
+  function intensityForCount(count) {
+    if (!count) return 0;
+    if (count === 1) return 1;
+    if (count <= 3) return 2;
+    return 3;
+  }
+
+  function renderActivityHeatmap(dayCounts, windowDays = 30) {
+    const grid = document.getElementById('inicio-heatmap-grid');
+    const summaryEl = document.getElementById('inicio-heatmap-summary');
+    if (!grid) return;
+    grid.innerHTML = '';
+    const today = startOfLocalDay(new Date());
+    let activeDays = 0;
+    let totalEvents = 0;
+    for (let offset = windowDays - 1; offset >= 0; offset--) {
+      const day = shiftLocalDay(today, -offset);
+      if (!day) continue;
+      const key = getDayKey(day);
+      const count = dayCounts && dayCounts.get ? (dayCounts.get(key) || 0) : 0;
+      if (count > 0) {
+        activeDays++;
+        totalEvents += count;
+      }
+      const cell = document.createElement('div');
+      cell.className = 'home-heatmap-cell level-' + intensityForCount(count);
+      cell.setAttribute('role', 'listitem');
+      const label = day.toLocaleDateString('pt-BR') +
+        (count ? ' · ' + count + (count === 1 ? ' atividade' : ' atividades') : ' · sem atividade');
+      cell.title = label;
+      cell.setAttribute('aria-label', label);
+      grid.appendChild(cell);
+    }
+    if (summaryEl) {
+      if (totalEvents === 0) {
+        summaryEl.textContent = 'Nenhuma atividade nos últimos ' + windowDays + ' dias.';
+      } else {
+        summaryEl.textContent = activeDays + (activeDays === 1 ? ' dia ativo' : ' dias ativos') +
+          ' · ' + totalEvents + (totalEvents === 1 ? ' atividade' : ' atividades');
+      }
+    }
+  }
+
+  function renderEmptyHeatmap(message) {
+    const grid = document.getElementById('inicio-heatmap-grid');
+    const summaryEl = document.getElementById('inicio-heatmap-summary');
+    if (grid) {
+      grid.innerHTML = '';
+      for (let i = 0; i < 30; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'home-heatmap-cell level-0';
+        cell.setAttribute('role', 'listitem');
+        grid.appendChild(cell);
+      }
+    }
+    if (summaryEl) summaryEl.textContent = message || '—';
   }
 
   function setInicioStreakState(value, note, state = '') {
@@ -566,6 +706,7 @@
       if (manualStreak == null) {
         setInicioStreakState('--', 'Faça login para acompanhar sua ofensiva.', 'empty');
       }
+      renderEmptyHeatmap('Faça login para ver sua atividade.');
       setInicioResumeState({
         title: 'Faça login para retomar seus estudos',
         description: 'Suas lições em andamento aparecem aqui para você continuar depois.',
@@ -614,6 +755,7 @@
         ...(kanaSessions || []).map(session => session && session.createdAt).filter(Boolean)
       ];
       const summary = calculateActivitySummary(activityTimestamps, 30);
+      renderActivityHeatmap(summary.dayCounts, 30);
 
       if (summary.streak === 0) {
         setInicioStreakState(0, 'Nenhuma atividade registrada nos últimos 30 dias. Complete uma atividade para iniciar sua ofensiva.', 'empty');
@@ -640,6 +782,7 @@
       if (getManualStreakDays() == null) {
         setInicioStreakState('--', 'Não foi possível carregar a ofensiva agora.', 'error');
       }
+      renderEmptyHeatmap('Não foi possível carregar a atividade agora.');
       setInicioResumeState({
         title: 'Não foi possível carregar sua retomada',
         description: 'Tente novamente em instantes ou abra a aba de lições para continuar estudando.',
@@ -956,31 +1099,52 @@
   });
 
   // --- Lições
+  function buildLessonProgressIndex(progressList) {
+    const index = new Map();
+    (progressList || []).forEach(progress => {
+      if (!progress) return;
+      const lessonId = getEntityId(progress.lesson_id || progress.lessonId);
+      if (!lessonId) return;
+      index.set(lessonId, progress);
+    });
+    return index;
+  }
+
   async function loadLicoes() {
+    bindLicoesFilters();
     const listEl = document.getElementById('licoes-list');
     const detailEl = document.getElementById('licao-detail');
+    const emptyEl = document.getElementById('licoes-empty-filter');
     listEl.hidden = false;
     detailEl.hidden = true;
+    if (emptyEl) emptyEl.hidden = true;
     listEl.innerHTML = '<p class="muted">Carregando lições...</p>';
     try {
       const data = getToken();
-      const [lessonsRes, favoritesRes] = await Promise.all([
+      const isAuthed = Boolean(data && data.token);
+      const [lessonsRes, favoritesRes, progressRes] = await Promise.all([
         api('/api/lessons'),
-        data && data.token
+        isAuthed
           ? api('/api/progress/favorites').catch(() => ({ success: false, data: [] }))
+          : Promise.resolve({ success: false, data: [] }),
+        isAuthed
+          ? api('/api/progress/my-progress').catch(() => ({ success: false, data: [] }))
           : Promise.resolve({ success: false, data: [] })
       ]);
       const lessons = (lessonsRes.data && lessonsRes.data.lessons) ? lessonsRes.data.lessons : [];
       cachedFavoriteLessonIds = buildFavoriteLessonIdSet(
         favoritesRes && favoritesRes.success && Array.isArray(favoritesRes.data) ? favoritesRes.data : []
       );
+      cachedLessonProgressById = buildLessonProgressIndex(
+        progressRes && progressRes.success && Array.isArray(progressRes.data) ? progressRes.data : []
+      );
+      cachedLessonsList = lessons;
 
       if (lessons.length === 0) {
         listEl.innerHTML = '<p class="empty">Nenhuma lição no banco. Rode <code>node populate-database.js</code> para dados de exemplo.</p>';
         return;
       }
-      listEl.innerHTML = lessons.map(renderLessonCard).join('');
-      bindLessonCardActions(listEl);
+      applyLessonsFilter();
     } catch (e) {
       listEl.innerHTML = '<p class="error-msg">Erro ao carregar lições: ' + (e.body?.message || e.message) + '</p>';
     }
@@ -1012,11 +1176,18 @@
         : cachedFavoriteLessonIds.has(lessonId);
       setFavoriteInCache(lessonId, isFavorite);
 
+      if (progress) {
+        cachedLessonProgressById.set(lessonId, progress);
+      }
+
       const meta = [
         lesson.level ? formatDisplayLabel(lesson.level) : '',
         lesson.category ? formatDisplayLabel(lesson.category) : '',
         progress && progress.last_accessed ? 'Último acesso: ' + formatDateTime(progress.last_accessed) : ''
       ].filter(Boolean).join(' • ');
+
+      const statusInfo = getLessonStatusInfo(progress);
+      const initialScore = progress && typeof progress.score === 'number' ? Math.round(progress.score) : 0;
 
       let html = '<div class="licao-detail-header">';
       html += '<div class="licao-detail-heading">';
@@ -1026,6 +1197,24 @@
       html += getFavoriteButtonMarkup(lessonId, isFavorite, 'licao-detail-favorite');
       html += '</div>';
       if (lesson.description) html += '<p>' + escapeHtml(lesson.description) + '</p>';
+
+      html += '<section class="licao-progress-card" data-lesson-id="' + escapeHtml(lessonId) + '">';
+      html += '<div class="licao-progress-row">';
+      html += '<span class="licao-progress-label">Status</span>';
+      html += '<span class="licao-status status-' + statusInfo.status + '">' + escapeHtml(statusInfo.label) + '</span>';
+      html += '</div>';
+      html += '<div class="licao-progress-row licao-progress-score">';
+      html += '<span class="licao-progress-label">Pontuação</span>';
+      html += '<input type="range" min="0" max="100" step="1" value="' + initialScore + '" id="licao-progress-score-input">';
+      html += '<span class="licao-progress-score-value" id="licao-progress-score-value">' + initialScore + '</span>';
+      html += '</div>';
+      html += '<div class="licao-progress-actions">';
+      html += '<button type="button" class="btn-secondary" id="licao-progress-save-score">Salvar pontuação</button>';
+      html += '<button type="button" class="btn-primary" id="licao-progress-mark-completed"' + (statusInfo.status === 'completed' ? ' disabled' : '') + '>Marcar como concluída</button>';
+      html += '</div>';
+      html += '<p class="licao-progress-feedback" id="licao-progress-feedback"></p>';
+      html += '</section>';
+
       if (lesson.content && lesson.content.length) {
         html += '<ul class="content-list">' + lesson.content.map(c => '<li>' + escapeHtml(c) + '</li>').join('') + '</ul>';
       }
@@ -1034,8 +1223,96 @@
       }
       contentEl.innerHTML = html;
       bindFavoriteButtons(contentEl);
+      bindLessonProgressControls(contentEl, lessonId);
     } catch (e) {
       contentEl.innerHTML = '<p class="error-msg">Erro: ' + (e.body?.message || e.message) + '</p>';
+    }
+  }
+
+  function showProgressFeedback(message, kind) {
+    const feedbackEl = document.getElementById('licao-progress-feedback');
+    if (!feedbackEl) return;
+    feedbackEl.textContent = message || '';
+    feedbackEl.className = 'licao-progress-feedback' + (kind ? ' ' + kind : '');
+  }
+
+  function updateLessonProgressUI(lessonId, progress) {
+    if (progress) cachedLessonProgressById.set(lessonId, progress);
+    const card = document.querySelector('.licao-progress-card[data-lesson-id="' + lessonId + '"]');
+    if (!card) return;
+    const statusEl = card.querySelector('.licao-status');
+    const completeBtn = card.querySelector('#licao-progress-mark-completed');
+    const scoreInput = card.querySelector('#licao-progress-score-input');
+    const scoreValueEl = card.querySelector('#licao-progress-score-value');
+    const info = getLessonStatusInfo(progress);
+    if (statusEl) {
+      statusEl.className = 'licao-status status-' + info.status;
+      statusEl.textContent = info.label;
+    }
+    if (completeBtn) {
+      completeBtn.disabled = info.status === 'completed';
+    }
+    if (progress && typeof progress.score === 'number' && scoreInput && scoreValueEl) {
+      const value = Math.round(progress.score);
+      scoreInput.value = String(value);
+      scoreValueEl.textContent = String(value);
+    }
+  }
+
+  function bindLessonProgressControls(containerEl, lessonId) {
+    if (!containerEl) return;
+    const scoreInput = containerEl.querySelector('#licao-progress-score-input');
+    const scoreValueEl = containerEl.querySelector('#licao-progress-score-value');
+    const saveBtn = containerEl.querySelector('#licao-progress-save-score');
+    const completeBtn = containerEl.querySelector('#licao-progress-mark-completed');
+
+    if (scoreInput && scoreValueEl) {
+      scoreInput.addEventListener('input', () => {
+        scoreValueEl.textContent = String(scoreInput.value);
+      });
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        if (!scoreInput) return;
+        const value = parseInt(scoreInput.value, 10);
+        if (Number.isNaN(value) || value < 0 || value > 100) {
+          showProgressFeedback('Pontuação deve ficar entre 0 e 100.', 'error');
+          return;
+        }
+        saveBtn.disabled = true;
+        try {
+          const res = await api('/api/progress/lesson/' + lessonId + '/score', {
+            method: 'PUT',
+            body: JSON.stringify({ score: value })
+          });
+          updateLessonProgressUI(lessonId, res && res.data ? res.data : null);
+          showProgressFeedback('Pontuação salva: ' + value + '.', 'success');
+        } catch (e) {
+          showProgressFeedback('Não foi possível salvar a pontuação: ' + (e.body?.message || e.message), 'error');
+        } finally {
+          saveBtn.disabled = false;
+        }
+      });
+    }
+
+    if (completeBtn) {
+      completeBtn.addEventListener('click', async () => {
+        const value = scoreInput ? parseInt(scoreInput.value, 10) : 100;
+        const score = Number.isNaN(value) ? 100 : Math.min(Math.max(value, 0), 100);
+        completeBtn.disabled = true;
+        try {
+          const res = await api('/api/progress/lesson/' + lessonId + '/complete', {
+            method: 'PUT',
+            body: JSON.stringify({ score })
+          });
+          updateLessonProgressUI(lessonId, res && res.data ? res.data : null);
+          showProgressFeedback('Lição marcada como concluída!', 'success');
+        } catch (e) {
+          showProgressFeedback('Não foi possível concluir: ' + (e.body?.message || e.message), 'error');
+          completeBtn.disabled = false;
+        }
+      });
     }
   }
 
@@ -1044,7 +1321,582 @@
     document.getElementById('licao-detail').hidden = true;
   });
 
+  // --- Vocabulário (prática livre / revisão / teste / modo prova)
+  const vocabTypingState = { mode: 'practice', words: [], index: 0, correct: 0, wrong: 0, skipped: 0, startedAt: 0, level: '', category: '' };
+  const vocabTestState = {
+    mode: 'test',
+    questions: [],
+    index: 0,
+    score: 0,
+    answered: false,
+    startedAt: 0,
+    level: '',
+    category: '',
+    examPoints: 0,
+    examTotalSeconds: 0,
+    examTimerId: null,
+    examTimeLeftMs: 0,
+    examEndsAt: 0
+  };
+  let vocabBound = false;
+
+  function normalizeAnswer(s) {
+    return (s || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{M}/gu, '');
+  }
+
+  function matchesVocabAnswer(input, word, answerType) {
+    const n = normalizeAnswer(input);
+    if (!n) return false;
+    let accepted;
+    if (answerType === 'romaji') {
+      accepted = [word.romaji];
+    } else {
+      accepted = [
+        word.portuguese,
+        word.english,
+        ...(Array.isArray(word.tags) ? word.tags : [])
+      ];
+    }
+    return accepted.some(value => value && normalizeAnswer(value) === n);
+  }
+
+  function showVocabPanels(phase) {
+    const setupEl = document.getElementById('vocab-setup');
+    const typingEl = document.getElementById('vocab-typing');
+    const testEl = document.getElementById('vocab-test');
+    const summaryEl = document.getElementById('vocab-summary');
+    if (setupEl) setupEl.hidden = phase !== 'setup';
+    if (typingEl) typingEl.hidden = phase !== 'typing';
+    if (testEl) testEl.hidden = phase !== 'test';
+    if (summaryEl) summaryEl.hidden = phase !== 'summary';
+  }
+
+  function getSelectedVocabMode() {
+    const checked = document.querySelector('input[name="vocab-mode"]:checked');
+    return checked ? checked.value : 'practice';
+  }
+
+  function getSelectedVocabAnswerType() {
+    const checked = document.querySelector('input[name="vocab-answer-type"]:checked');
+    return checked && checked.value === 'romaji' ? 'romaji' : 'portuguese';
+  }
+
+  function syncVocabExamFieldVisibility() {
+    const fieldEl = document.getElementById('vocab-exam-time-field');
+    if (!fieldEl) return;
+    fieldEl.hidden = getSelectedVocabMode() !== 'exam';
+  }
+
+  function vocabQueryParams() {
+    const level = document.getElementById('vocab-level').value.trim();
+    const category = document.getElementById('vocab-category').value.trim();
+    let limit = parseInt(document.getElementById('vocab-limit').value, 10);
+    if (Number.isNaN(limit) || limit < 5) limit = 5;
+    if (limit > 50) limit = 50;
+    const answerType = getSelectedVocabAnswerType();
+    const q = new URLSearchParams();
+    q.set('limit', String(limit));
+    if (level) q.set('level', level);
+    if (category) q.set('category', category);
+    q.set('answerType', answerType);
+    return { qs: q.toString(), level, category, limit, answerType };
+  }
+
+  function getExamSeconds() {
+    let seconds = parseInt(document.getElementById('vocab-exam-time').value, 10);
+    if (Number.isNaN(seconds) || seconds < 20) seconds = 20;
+    if (seconds > 600) seconds = 600;
+    return seconds;
+  }
+
+  function clearExamTimer() {
+    if (vocabTestState.examTimerId) {
+      clearInterval(vocabTestState.examTimerId);
+      vocabTestState.examTimerId = null;
+    }
+  }
+
+  function updateExamTimerUI() {
+    const timeLeftEl = document.getElementById('vocab-exam-time-left');
+    const fillEl = document.getElementById('vocab-exam-progress-fill');
+    if (!timeLeftEl || !fillEl) return;
+    const remainingMs = Math.max(0, vocabTestState.examEndsAt - Date.now());
+    vocabTestState.examTimeLeftMs = remainingMs;
+    const totalMs = vocabTestState.examTotalSeconds * 1000;
+    const seconds = Math.ceil(remainingMs / 1000);
+    timeLeftEl.textContent = seconds + 's';
+    timeLeftEl.classList.toggle('is-low', seconds <= 10);
+    const consumedRatio = totalMs > 0 ? Math.min(1, 1 - remainingMs / totalMs) : 1;
+    const fillRight = Math.max(0, 100 - consumedRatio * 100);
+    fillEl.style.inset = '0 ' + fillRight + '% 0 0';
+    fillEl.classList.toggle('is-low', seconds <= 10);
+  }
+
+  function startExamTimer(seconds) {
+    clearExamTimer();
+    vocabTestState.examTotalSeconds = seconds;
+    vocabTestState.examEndsAt = Date.now() + seconds * 1000;
+    updateExamTimerUI();
+    vocabTestState.examTimerId = setInterval(() => {
+      updateExamTimerUI();
+      if (vocabTestState.examTimeLeftMs <= 0) {
+        clearExamTimer();
+        finishVocabExam('time-up');
+      }
+    }, 250);
+  }
+
+  function setVocabSummary(message, statusMessage = '') {
+    document.getElementById('vocab-summary-text').textContent = message;
+    document.getElementById('vocab-summary-status').textContent = statusMessage || '';
+    showVocabPanels('summary');
+  }
+
+  async function persistVocabSession({ mode, score, total, durationSeconds, examPoints, level, category, answerType }) {
+    const tok = getToken();
+    if (!tok || !tok.token) return { saved: false, reason: 'unauthenticated' };
+    try {
+      await api('/api/vocabulary/session', {
+        method: 'POST',
+        body: JSON.stringify({ mode, score, total, durationSeconds, examPoints, level, category, answerType })
+      });
+      return { saved: true };
+    } catch (e) {
+      return { saved: false, reason: 'error', message: e.body?.message || e.message };
+    }
+  }
+
+  function resetVocabTab() {
+    clearExamTimer();
+    vocabTypingState.words = [];
+    vocabTypingState.index = 0;
+    vocabTypingState.correct = 0;
+    vocabTypingState.wrong = 0;
+    vocabTypingState.skipped = 0;
+    vocabTestState.questions = [];
+    vocabTestState.index = 0;
+    vocabTestState.score = 0;
+    vocabTestState.answered = false;
+    vocabTestState.examPoints = 0;
+    vocabTestState.examTotalSeconds = 0;
+    vocabTestState.examTimeLeftMs = 0;
+    vocabTestState.examEndsAt = 0;
+    const setupMsg = document.getElementById('vocab-setup-msg');
+    if (setupMsg) setupMsg.hidden = true;
+    const answerEl = document.getElementById('vocab-answer');
+    if (answerEl) answerEl.value = '';
+    const typingFeedback = document.getElementById('vocab-typing-feedback');
+    if (typingFeedback) typingFeedback.hidden = true;
+    const testFeedback = document.getElementById('vocab-test-feedback');
+    if (testFeedback) testFeedback.hidden = true;
+    const testNext = document.getElementById('vocab-test-next');
+    if (testNext) testNext.hidden = true;
+    const examBar = document.getElementById('vocab-exam-bar');
+    if (examBar) examBar.hidden = true;
+    showVocabPanels('setup');
+    syncVocabExamFieldVisibility();
+    bindVocabHandlers();
+  }
+
+  function renderTypingCard() {
+    const words = vocabTypingState.words;
+    const i = vocabTypingState.index;
+    const fb = document.getElementById('vocab-typing-feedback');
+    const ans = document.getElementById('vocab-answer');
+    const progressEl = document.getElementById('vocab-typing-progress');
+    const promptEl = document.getElementById('vocab-typing-prompt');
+    const hintEl = document.getElementById('vocab-romaji-hint');
+    const answerType = vocabTypingState.answerType || 'portuguese';
+    if (fb) fb.hidden = true;
+    if (ans) ans.value = '';
+    if (i >= words.length) {
+      finishVocabTyping('done');
+      return;
+    }
+    const w = words[i];
+    document.getElementById('vocab-jp').textContent = w.japanese || '—';
+    if (promptEl) {
+      promptEl.textContent = answerType === 'romaji'
+        ? 'Escreva a leitura em romaji desta palavra.'
+        : 'Escreva a tradução em português (aceita inglês também).';
+    }
+    if (ans) {
+      ans.placeholder = answerType === 'romaji' ? 'Ex.: konnichiwa' : 'Ex.: olá';
+    }
+    if (hintEl) {
+      const rom = (w.romaji || '').trim();
+      // Se a resposta esperada é o romaji, não dar o romaji como dica.
+      hintEl.textContent = answerType === 'romaji' ? '' : (rom ? 'Romaji: ' + rom : '');
+    }
+    if (progressEl) {
+      progressEl.textContent = 'Cartão ' + (i + 1) + ' de ' + words.length;
+    }
+    document.getElementById('vocab-typing-score').textContent =
+      'Acertos: ' + vocabTypingState.correct + ' · Erros: ' + vocabTypingState.wrong +
+      (vocabTypingState.skipped ? ' · Pulos: ' + vocabTypingState.skipped : '');
+    if (ans) ans.focus();
+  }
+
+  function vocabCheckTyping() {
+    const words = vocabTypingState.words;
+    const i = vocabTypingState.index;
+    if (i >= words.length) return;
+    const w = words[i];
+    const input = document.getElementById('vocab-answer').value;
+    const fb = document.getElementById('vocab-typing-feedback');
+    if (!fb) return;
+    const answerType = vocabTypingState.answerType || 'portuguese';
+    fb.hidden = false;
+    if (matchesVocabAnswer(input, w, answerType)) {
+      fb.textContent = 'Correto!';
+      fb.className = 'practice-feedback correct';
+      vocabTypingState.correct++;
+      vocabTypingState.index++;
+      setTimeout(renderTypingCard, 450);
+    } else {
+      const expected = answerType === 'romaji' ? (w.romaji || '—') : (w.portuguese || '—');
+      const extra = answerType === 'romaji'
+        ? (w.portuguese ? ' · Tradução: ' + w.portuguese : '')
+        : (w.romaji ? ' · Romaji: ' + w.romaji : '');
+      fb.textContent = 'Resposta esperada: ' + expected + extra;
+      fb.className = 'practice-feedback wrong';
+      vocabTypingState.wrong++;
+      vocabTypingState.index++;
+      setTimeout(renderTypingCard, 1300);
+    }
+  }
+
+  function vocabSkipTyping() {
+    const words = vocabTypingState.words;
+    const i = vocabTypingState.index;
+    if (i >= words.length) return;
+    vocabTypingState.skipped++;
+    vocabTypingState.index++;
+    renderTypingCard();
+  }
+
+  async function finishVocabTyping(reason) {
+    const t = vocabTypingState;
+    const total = t.correct + t.wrong + t.skipped;
+    const durationSeconds = t.startedAt ? Math.round((Date.now() - t.startedAt) / 1000) : 0;
+    const summaryMsg = (reason === 'done' ? 'Sessão concluída! ' : 'Sessão encerrada. ') +
+      'Acertos: ' + t.correct + ' · Erros: ' + t.wrong +
+      (t.skipped ? ' · Pulos: ' + t.skipped : '') +
+      (total ? ' · Cartões: ' + total : '') +
+      (durationSeconds ? ' · Tempo: ' + durationSeconds + 's' : '');
+
+    const persistResult = total > 0
+      ? await persistVocabSession({
+          mode: t.mode,
+          score: t.correct,
+          total,
+          durationSeconds,
+          level: t.level,
+          category: t.category,
+          answerType: t.answerType
+        })
+      : { saved: false, reason: 'empty' };
+
+    let statusMessage = '';
+    if (persistResult.saved) {
+      statusMessage = 'Resultado salvo no histórico.';
+    } else if (persistResult.reason === 'unauthenticated') {
+      statusMessage = 'Faça login para registrar essa sessão no histórico.';
+    } else if (persistResult.reason === 'error') {
+      statusMessage = 'Não foi possível salvar no histórico: ' + (persistResult.message || 'erro');
+    }
+
+    setVocabSummary(summaryMsg, statusMessage);
+  }
+
+  function renderVocabTestQuestion() {
+    const q = vocabTestState.questions[vocabTestState.index];
+    const fb = document.getElementById('vocab-test-feedback');
+    const nextBtn = document.getElementById('vocab-test-next');
+    const promptEl = document.getElementById('vocab-test-prompt');
+    if (fb) fb.hidden = true;
+    if (nextBtn) nextBtn.hidden = true;
+    vocabTestState.answered = false;
+    if (!q) {
+      if (vocabTestState.mode === 'exam') {
+        finishVocabExam('done');
+      } else {
+        finishVocabTest('done');
+      }
+      return;
+    }
+    document.getElementById('vocab-test-jp').textContent = q.question || '—';
+    const at = q.answerType || vocabTestState.answerType || 'portuguese';
+    if (promptEl) {
+      promptEl.textContent = at === 'romaji'
+        ? 'Qual é a leitura em romaji?'
+        : 'Qual é a tradução em português?';
+    }
+    const progressEl = document.getElementById('vocab-test-progress');
+    if (progressEl) {
+      progressEl.textContent = 'Questão ' + (vocabTestState.index + 1) + ' de ' + vocabTestState.questions.length +
+        (vocabTestState.mode === 'test' ? ' · Acertos: ' + vocabTestState.score : '');
+    }
+    const optsEl = document.getElementById('vocab-test-options');
+    if (!optsEl) return;
+    optsEl.innerHTML = '';
+    (q.options || []).forEach(opt => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = opt;
+      btn.addEventListener('click', () => onVocabTestPick(btn, opt, q));
+      optsEl.appendChild(btn);
+    });
+  }
+
+  function onVocabTestPick(buttonEl, opt, question) {
+    if (vocabTestState.answered) return;
+    vocabTestState.answered = true;
+    const correct = opt === question.correctAnswer;
+    if (correct) vocabTestState.score++;
+
+    if (vocabTestState.mode === 'exam') {
+      vocabTestState.examPoints += correct ? 10 : -3;
+      const pointsEl = document.getElementById('vocab-exam-points');
+      if (pointsEl) pointsEl.textContent = String(vocabTestState.examPoints);
+    }
+
+    const fb = document.getElementById('vocab-test-feedback');
+    if (fb) {
+      fb.hidden = false;
+      fb.className = 'practice-feedback ' + (correct ? 'correct' : 'wrong');
+      fb.textContent = correct ? 'Correto!' : 'Correto: ' + question.correctAnswer;
+    }
+
+    document.querySelectorAll('#vocab-test-options button').forEach(b => {
+      b.disabled = true;
+      if (b.textContent === question.correctAnswer) b.classList.add('correct-pick');
+      else if (b === buttonEl && !correct) b.classList.add('wrong-pick');
+    });
+
+    if (vocabTestState.mode === 'exam') {
+      setTimeout(() => {
+        if (!vocabTestState.examTimerId) return;
+        vocabTestState.index++;
+        renderVocabTestQuestion();
+      }, 700);
+    } else {
+      const nextBtn = document.getElementById('vocab-test-next');
+      if (nextBtn) nextBtn.hidden = false;
+    }
+  }
+
+  async function finishVocabTest(reason) {
+    const t = vocabTestState;
+    const total = t.questions.length;
+    const durationSeconds = t.startedAt ? Math.round((Date.now() - t.startedAt) / 1000) : 0;
+    const baseMsg = (reason === 'done' ? 'Teste concluído! ' : 'Teste encerrado. ') +
+      'Acertos: ' + t.score + ' de ' + total +
+      (durationSeconds ? ' · Tempo: ' + durationSeconds + 's' : '');
+
+    const persistResult = total > 0 ? await persistVocabSession({
+      mode: 'test',
+      score: t.score,
+      total,
+      durationSeconds,
+      level: t.level,
+      category: t.category,
+      answerType: t.answerType
+    }) : { saved: false, reason: 'empty' };
+
+    let statusMessage = '';
+    if (persistResult.saved) statusMessage = 'Resultado salvo no histórico.';
+    else if (persistResult.reason === 'unauthenticated') statusMessage = 'Faça login para registrar no histórico.';
+    else if (persistResult.reason === 'error') statusMessage = 'Não foi possível salvar: ' + (persistResult.message || 'erro');
+
+    setVocabSummary(baseMsg, statusMessage);
+  }
+
+  async function finishVocabExam(reason) {
+    clearExamTimer();
+    const t = vocabTestState;
+    const totalAnswered = Math.min(t.index + (t.answered ? 1 : 0), t.questions.length);
+    const durationSeconds = t.startedAt ? Math.round((Date.now() - t.startedAt) / 1000) : 0;
+    const reasonMsg = reason === 'time-up'
+      ? 'Tempo esgotado! '
+      : reason === 'done'
+        ? 'Banco de questões esgotado! '
+        : 'Modo prova encerrado. ';
+    const baseMsg = reasonMsg +
+      'Pontos: ' + t.examPoints +
+      ' · Acertos: ' + t.score + ' / ' + totalAnswered +
+      ' (de ' + t.questions.length + ' questões disponíveis)' +
+      (durationSeconds ? ' · Tempo: ' + durationSeconds + 's' : '');
+
+    const persistResult = totalAnswered > 0 ? await persistVocabSession({
+      mode: 'exam',
+      score: t.score,
+      total: totalAnswered,
+      durationSeconds,
+      examPoints: t.examPoints,
+      level: t.level,
+      category: t.category,
+      answerType: t.answerType
+    }) : { saved: false, reason: 'empty' };
+
+    let statusMessage = '';
+    if (persistResult.saved) statusMessage = 'Resultado da prova salvo no histórico.';
+    else if (persistResult.reason === 'unauthenticated') statusMessage = 'Faça login para registrar a prova no histórico.';
+    else if (persistResult.reason === 'error') statusMessage = 'Não foi possível salvar: ' + (persistResult.message || 'erro');
+
+    setVocabSummary(baseMsg, statusMessage);
+  }
+
+  async function startVocabSession() {
+    const msgEl = document.getElementById('vocab-setup-msg');
+    if (msgEl) msgEl.hidden = true;
+    const mode = getSelectedVocabMode();
+    const tok = getToken();
+    const { qs, level, category } = vocabQueryParams();
+
+    if ((mode === 'review' || mode === 'test' || mode === 'exam') && (!tok || !tok.token)) {
+      if (msgEl) {
+        msgEl.textContent = 'Faça login para usar revisão, teste ou modo prova.';
+        msgEl.hidden = false;
+      }
+      return;
+    }
+
+    try {
+      if (mode === 'test' || mode === 'exam') {
+        const res = await api('/api/vocabulary/test/session?' + qs);
+        const data = res.data || {};
+        const questions = data.testQuestions || [];
+        if (!questions.length) {
+          if (msgEl) {
+            msgEl.textContent = 'Sem palavras suficientes para o teste. Verifique os filtros ou popule o banco.';
+            msgEl.hidden = false;
+          }
+          return;
+        }
+        vocabTestState.mode = mode;
+        vocabTestState.questions = questions;
+        vocabTestState.index = 0;
+        vocabTestState.score = 0;
+        vocabTestState.answered = false;
+        vocabTestState.startedAt = Date.now();
+        vocabTestState.level = level;
+        vocabTestState.category = category;
+        vocabTestState.answerType = data.answerType || getSelectedVocabAnswerType();
+        vocabTestState.examPoints = 0;
+        const modeTagEl = document.getElementById('vocab-test-mode');
+        if (modeTagEl) modeTagEl.textContent = mode === 'exam' ? 'Modo prova' : 'Teste';
+        const examBar = document.getElementById('vocab-exam-bar');
+        if (examBar) examBar.hidden = mode !== 'exam';
+        if (mode === 'exam') {
+          const seconds = getExamSeconds();
+          const pointsEl = document.getElementById('vocab-exam-points');
+          if (pointsEl) pointsEl.textContent = '0';
+          startExamTimer(seconds);
+        }
+        showVocabPanels('test');
+        renderVocabTestQuestion();
+        return;
+      }
+
+      const path = mode === 'review'
+        ? '/api/vocabulary/review/session?' + qs
+        : '/api/vocabulary/random/practice?' + qs;
+      const res = await api(path);
+      const payload = res.data;
+      const words = Array.isArray(payload)
+        ? payload
+        : (payload && payload.vocabulary)
+          ? payload.vocabulary
+          : [];
+      if (!words.length) {
+        if (msgEl) {
+          msgEl.textContent = 'Nenhuma palavra encontrada. Tente outros filtros ou popule o banco.';
+          msgEl.hidden = false;
+        }
+        return;
+      }
+      vocabTypingState.mode = mode;
+      vocabTypingState.words = words;
+      vocabTypingState.index = 0;
+      vocabTypingState.correct = 0;
+      vocabTypingState.wrong = 0;
+      vocabTypingState.skipped = 0;
+      vocabTypingState.startedAt = Date.now();
+      vocabTypingState.level = level;
+      vocabTypingState.category = category;
+      vocabTypingState.answerType = getSelectedVocabAnswerType();
+      const tagEl = document.getElementById('vocab-typing-mode');
+      if (tagEl) tagEl.textContent = mode === 'review' ? 'Revisão' : 'Prática livre';
+      showVocabPanels('typing');
+      renderTypingCard();
+    } catch (e) {
+      if (msgEl) {
+        msgEl.textContent = e.body?.message || e.message || 'Erro ao iniciar sessão.';
+        msgEl.hidden = false;
+      }
+    }
+  }
+
+  function bindVocabHandlers() {
+    if (vocabBound) return;
+    const startBtn = document.getElementById('vocab-start-btn');
+    if (!startBtn) return;
+    vocabBound = true;
+
+    document.querySelectorAll('input[name="vocab-mode"]').forEach(input => {
+      input.addEventListener('change', syncVocabExamFieldVisibility);
+    });
+
+    startBtn.addEventListener('click', startVocabSession);
+
+    const checkBtn = document.getElementById('vocab-check-btn');
+    if (checkBtn) checkBtn.addEventListener('click', vocabCheckTyping);
+    const skipBtn = document.getElementById('vocab-skip-btn');
+    if (skipBtn) skipBtn.addEventListener('click', vocabSkipTyping);
+    const ansEl = document.getElementById('vocab-answer');
+    if (ansEl) {
+      ansEl.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          vocabCheckTyping();
+        }
+      });
+    }
+    const typingFinishBtn = document.getElementById('vocab-typing-finish');
+    if (typingFinishBtn) typingFinishBtn.addEventListener('click', () => finishVocabTyping('manual'));
+
+    const nextBtn = document.getElementById('vocab-test-next');
+    if (nextBtn) nextBtn.addEventListener('click', () => {
+      vocabTestState.index++;
+      renderVocabTestQuestion();
+    });
+
+    const testFinishBtn = document.getElementById('vocab-test-finish');
+    if (testFinishBtn) testFinishBtn.addEventListener('click', () => {
+      if (vocabTestState.mode === 'exam') finishVocabExam('manual');
+      else finishVocabTest('manual');
+    });
+
+    const summaryOk = document.getElementById('vocab-summary-ok');
+    if (summaryOk) summaryOk.addEventListener('click', () => {
+      resetVocabTab();
+      switchTab('inicio');
+    });
+  }
+
   // --- Meu histórico
+  function vocabModeLabel(mode) {
+    if (mode === 'review') return 'Revisão';
+    if (mode === 'test') return 'Teste';
+    if (mode === 'exam') return 'Modo prova';
+    return 'Prática livre';
+  }
+
   async function loadHistorico() {
     const statsEl = document.getElementById('historico-stats');
     const listEl = document.getElementById('historico-list');
@@ -1056,24 +1908,87 @@
       return;
     }
     try {
-      const [progressRes, statsRes] = await Promise.all([
+      const [progressRes, statsRes, vocabSessionsRes, lessonsRes] = await Promise.all([
         api('/api/progress/my-progress').catch(() => ({ success: false, data: [] })),
-        api('/api/progress/stats').catch(() => ({ success: false, data: {} }))
+        api('/api/progress/stats').catch(() => ({ success: false, data: {} })),
+        api('/api/vocabulary/my-sessions?limit=25').catch(() => ({ success: false, data: [] })),
+        api('/api/lessons').catch(() => ({ success: false, data: { lessons: [] } }))
       ]);
       const list = (progressRes.success && progressRes.data) ? progressRes.data : [];
       const stats = (statsRes.success && statsRes.data) ? statsRes.data : {};
+      const vocabSessions = (vocabSessionsRes && vocabSessionsRes.success && Array.isArray(vocabSessionsRes.data))
+        ? vocabSessionsRes.data
+        : [];
+      const lessons = (lessonsRes && lessonsRes.data && lessonsRes.data.lessons) ? lessonsRes.data.lessons : [];
+      const lessonTitleById = new Map();
+      lessons.forEach(lesson => {
+        const id = getEntityId(lesson && (lesson._id || lesson.id));
+        if (id) lessonTitleById.set(id, lesson.title || 'Lição sem título');
+      });
 
       statsEl.innerHTML = `
         <div class="stat-card"><span class="value">${stats.completedLessons ?? 0}</span><span class="label">Concluídas</span></div>
         <div class="stat-card"><span class="value">${stats.inProgressLessons ?? 0}</span><span class="label">Em progresso</span></div>
         <div class="stat-card"><span class="value">${stats.averageScore != null ? Math.round(stats.averageScore) : '-'}</span><span class="label">Nota média</span></div>
+        <div class="stat-card"><span class="value">${vocabSessions.length}</span><span class="label">Sessões de vocabulário</span></div>
       `;
 
+      let html = '';
+      html += '<section class="historico-section">';
+      html += '<h3>Lições</h3>';
       if (list.length === 0) {
-        listEl.innerHTML = '<p class="empty">Nenhum registro de progresso ainda. Suas lições e notas aparecerão aqui.</p>';
+        html += '<p class="empty">Nenhum registro de progresso ainda.</p>';
       } else {
-        listEl.innerHTML = '<pre>' + JSON.stringify(list, null, 2) + '</pre>';
+        html += '<div class="historico-card-list">';
+        list.slice(0, 25).forEach(progress => {
+          const lessonId = getEntityId(progress.lesson_id || progress.lessonId);
+          const title = lessonTitleById.get(lessonId) || 'Lição';
+          const info = getLessonStatusInfo(progress);
+          const meta = [
+            info.label,
+            progress.last_accessed ? 'Último acesso: ' + formatDateTime(progress.last_accessed) : '',
+            progress.favorite ? 'Favorita' : ''
+          ].filter(Boolean).join(' · ');
+          const score = typeof progress.score === 'number' ? Math.round(progress.score) : 0;
+          html += '<article class="historico-card">';
+          html += '<div><div class="historico-card-title">' + escapeHtml(title) + '</div>';
+          html += '<div class="historico-card-meta">' + escapeHtml(meta) + '</div></div>';
+          html += '<span class="historico-card-score">' + score + '</span>';
+          html += '</article>';
+        });
+        html += '</div>';
       }
+      html += '</section>';
+
+      html += '<section class="historico-section">';
+      html += '<h3>Sessões de vocabulário</h3>';
+      if (vocabSessions.length === 0) {
+        html += '<p class="empty">Nenhuma sessão de vocabulário registrada ainda.</p>';
+      } else {
+        html += '<div class="historico-card-list">';
+        vocabSessions.slice(0, 25).forEach(session => {
+          const total = session.total || 0;
+          const score = session.score || 0;
+          const accuracy = total > 0 ? Math.round((score / total) * 100) : 0;
+          const titleParts = [vocabModeLabel(session.mode), session.level || '', session.category || ''].filter(Boolean);
+          const meta = [
+            session.createdAt ? formatDateTime(session.createdAt) : '',
+            total ? score + '/' + total + ' (' + accuracy + '%)' : 'Sem cartões',
+            session.durationSeconds != null ? 'Tempo: ' + session.durationSeconds + 's' : '',
+            session.examPoints != null ? 'Pontos: ' + session.examPoints : ''
+          ].filter(Boolean).join(' · ');
+          html += '<article class="historico-card">';
+          html += '<div><div class="historico-card-title">' + escapeHtml(titleParts.join(' · ')) + '</div>';
+          html += '<div class="historico-card-meta">' + escapeHtml(meta) + '</div></div>';
+          const display = session.examPoints != null ? session.examPoints : accuracy + '%';
+          html += '<span class="historico-card-score">' + escapeHtml(String(display)) + '</span>';
+          html += '</article>';
+        });
+        html += '</div>';
+      }
+      html += '</section>';
+
+      listEl.innerHTML = html;
     } catch (e) {
       listEl.innerHTML = '<p class="error-msg">Erro ao carregar histórico: ' + (e.body?.message || e.message) + '</p>';
     }

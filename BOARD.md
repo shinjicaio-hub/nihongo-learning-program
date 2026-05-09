@@ -34,10 +34,11 @@ Etapas realizadas no projeto, organizadas por fases e operações **CRUD** (Crea
 |-------|--------|-----------|
 | Conexão com MongoDB | ✅ | `src/config/database.js`, `connectDB()`, `getDB()` |
 | URI configurável | ✅ | `MONGODB_URI` (ex.: `mongodb://localhost:27017/nihongo_learning`) |
-| Índices | ✅ | users (email, username), lessons, vocabulary, user_progress, kana_practice_sessions |
+| Índices | ✅ | users (email, username), lessons, vocabulary, user_progress, kana_practice_sessions, vocabulary_practice_sessions (`user_id+createdAt`, `user_id+mode+createdAt`) |
 | Scripts de apoio | ✅ | `populate-database.js`, `clear-database.js`, `test-mongodb.js` |
+| Seed idempotente | ✅ | `scripts/seed.js` (`npm run seed`) — upsert de **9 lições** e **76 palavras** de vocabulário (cumprimentos, números, família, comida, hiragana, katakana, cotidiano, verbos), sem apagar dados existentes |
 
-**Coleções principais:** `users`, `lessons`, `vocabulary`, `user_progress`, `kana_practice_sessions`.
+**Coleções principais:** `users`, `lessons`, `vocabulary`, `user_progress`, `kana_practice_sessions`, `vocabulary_practice_sessions`.
 
 ---
 
@@ -90,11 +91,13 @@ Etapas realizadas no projeto, organizadas por fases e operações **CRUD** (Crea
 | **R** | ✅ | `GET /api/vocabulary/random/practice` — aleatório para prática |
 | **R** | ✅ | `GET /api/vocabulary/:id` — item por ID |
 | **R** | ✅ | `GET /api/vocabulary/review/session` — sessão de revisão (autenticado) |
-| **R** | ✅ | `GET /api/vocabulary/test/session` — sessão de teste (autenticado) |
+| **R** | ✅ | `GET /api/vocabulary/test/session` — sessão de teste (autenticado); aceita `?answerType=portuguese\|romaji` para gerar resposta correta + distratores reais (extraídos do mesmo lote/nível/categoria) no campo escolhido |
+| **R** | ✅ | `GET /api/vocabulary/my-sessions` — sessões de prática do usuário logado (mais recentes primeiro, `limit` até 100) |
+| **C** | ✅ | `POST /api/vocabulary/session` — registrar sessão de prática (autenticado): `{ mode, level, category, answerType, score, total, durationSeconds, examPoints }` |
 | **R** | ✅ | `GET /api/vocabulary/stats/overview` — estatísticas |
 | **R** | ✅ | `GET /api/vocabulary/tags/:tag` — por tag |
 
-*(Vocabulário gerenciado via seed/admin; API expõe leitura e sessões.)*
+*(Vocabulário gerenciado via `npm run seed` (idempotente) e admin; API expõe leitura, sessões de prática/teste/revisão/prova e histórico do próprio usuário.)*
 
 ---
 
@@ -149,14 +152,16 @@ Front-end: prática com hiragana/katakana, baralho (mostrar todos antes de repet
 | Etapa | Status | Descrição |
 |-------|--------|-----------|
 | Login / Registro | ✅ | Tela de login, token no `localStorage` |
-| Abas principais | ✅ | Início, Kana, Lições, Histórico, Banco de Dados |
+| Abas principais | ✅ | Início, Kana, **Vocabulário**, Lições, Histórico, Banco de Dados |
 | Cabeçalho logado | ✅ | Bloco de marca (`brand-block`), subtítulo, abas com `aria-label`, botão Sair |
-| Aba Início — ofensiva | ✅ | Contagem em destaque de dias **consecutivos** com atividade nos últimos 30 dias (calendário local); dados de `GET /api/progress/my-progress` (`last_accessed`) + `GET /api/kana/activity?days=30` (`createdAt` das sessões); estados visuais vazios/erro e faixas por tamanho da ofensiva |
+| Aba Início — ofensiva | ✅ | Contagem em destaque de dias **consecutivos** com atividade nos últimos 30 dias (calendário local); dados de `GET /api/progress/my-progress` (`last_accessed`) + `GET /api/kana/activity?days=30` (`createdAt`) + sessões de vocabulário; estados visuais vazios/erro e faixas por tamanho da ofensiva |
+| Aba Início — heatmap | ✅ | Grade de **30 dias** com 4 níveis de intensidade (atividade combinada de kana + vocabulário + progresso de lições), legenda “Menos / Mais”, resumo numérico e `aria-live` |
 | Aba Início — retomada | ✅ | Card “Continuar de onde parou”: primeira lição com status `in_progress` em `my-progress`; botão abre a aba Lições e o detalhe da lição |
 | Aba Início — teste manual | ✅ | Painel opcional para simular ofensiva 0–30 (demonstração) via `localStorage`; “Voltar ao automático” restaura o cálculo real |
 | Prática de Kana | ✅ | Customização (alfabeto/sílabas), atividade, resumo, baralho, contagem, Enter |
-| Listagem de lições | ✅ | Lista e detalhe de lição |
-| Histórico | ✅ | Exibição de progresso/sessões |
+| Aba Vocabulário | ✅ | 4 modos: **Prática livre**, **Revisão** (autenticado), **Teste** (múltipla escolha), **Modo prova** (timer + pontuação acumulada). Filtros por nível/categoria/limite e seletor **Tipo de resposta** (`Tradução` ou `Romaji`) que altera prompt, placeholder, dicas exibidas e o critério de acerto/distratores. Persistência das sessões via `POST /api/vocabulary/session` |
+| Listagem de lições | ✅ | Filtros por nível/categoria/status, badges de progresso (`Concluído`/`Em andamento`/`Não iniciado`) e `score`; detalhe da lição com **range** de pontuação, botão **Marcar como concluído** e toggle de **favorito** |
+| Histórico | ✅ | Cards estruturados: progresso por lição (status, score, tentativas) e sessões de vocabulário (modo, nível, categoria, acertos, duração) buscadas em `GET /api/vocabulary/my-sessions` |
 | Aba Banco de Dados | ✅ | Status da conexão, coleções (conforme `DATABASE_INTERFACE_GUIDE.md`) |
 
 ---
@@ -180,11 +185,11 @@ Front-end: prática com hiragana/katakana, baralho (mostrar todos antes de repet
 | Auth (login/register) | ✅ | ✅ (verify/refresh) | — | — |
 | Users | (register) | ✅ | ✅ | ✅ (profile) |
 | Lessons | (seed/admin) | ✅ | — | — |
-| Vocabulary | (seed/admin) | ✅ | — | — |
+| Vocabulary | ✅ (sessões de prática) | ✅ (incl. `my-sessions`, `test/session?answerType=…`) | — | — |
 | Progress | ✅ | ✅ | ✅ | — |
 | Kana sessions | ✅ | ✅ (random, activity) | — | — |
 | Admin (DB) | — | ✅ | — | — |
 
 ---
 
-*Última atualização do board: aba Início (ofensiva, retomada, teste manual), `GET /api/kana/activity`, cabeçalho logado.*
+*Última atualização do board: aba Vocabulário (prática livre, revisão, teste, modo prova) com **tipo de resposta** (tradução/romaji), seed expandido (9 lições / 76 palavras), heatmap de 30 dias na Início, lições com filtros + score + favoritos, histórico com cards de sessões de vocabulário (`/api/vocabulary/my-sessions`, `POST /api/vocabulary/session`).*

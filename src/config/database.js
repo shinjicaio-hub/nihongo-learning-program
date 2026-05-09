@@ -41,7 +41,11 @@ const createIndexes = async () => {
     
     // Índices para sessões de prática de kana
     await db.collection('kana_practice_sessions').createIndex({ user_id: 1, createdAt: -1 });
-    
+
+    // Índices para sessões de prática de vocabulário (Trilha B)
+    await db.collection('vocabulary_practice_sessions').createIndex({ user_id: 1, createdAt: -1 });
+    await db.collection('vocabulary_practice_sessions').createIndex({ user_id: 1, mode: 1, createdAt: -1 });
+
     console.log('Índices criados com sucesso!');
   } catch (error) {
     console.error('Erro ao criar índices:', error);

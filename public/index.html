@@ -42,6 +42,7 @@
           <button type="button" class="tab active" data-tab="inicio">Início</button>
           <button type="button" class="tab" data-tab="kana">Kana</button>
           <button type="button" class="tab" data-tab="licoes">Lições</button>
+          <button type="button" class="tab" data-tab="vocabulario">Vocabulário</button>
           <button type="button" class="tab" data-tab="historico">Meu histórico</button>
           <button type="button" class="tab" data-tab="banco">Banco de Dados</button>
         </nav>
@@ -54,6 +55,21 @@
             <span class="streak-label">Ofensiva</span>
             <strong id="inicio-streak-value" class="streak-value">--</strong>
             <p id="inicio-streak-note" class="streak-note">Carregando atividade dos últimos 30 dias...</p>
+          </div>
+          <div id="inicio-heatmap-card" class="home-heatmap" aria-live="polite">
+            <div class="home-heatmap-header">
+              <span class="home-heatmap-label">Atividade dos últimos 30 dias</span>
+              <span id="inicio-heatmap-summary" class="home-heatmap-summary">Carregando...</span>
+            </div>
+            <div id="inicio-heatmap-grid" class="home-heatmap-grid" role="list" aria-label="Atividade dos últimos 30 dias"></div>
+            <div class="home-heatmap-legend" aria-hidden="true">
+              <span>Menos</span>
+              <span class="legend-cell level-0"></span>
+              <span class="legend-cell level-1"></span>
+              <span class="legend-cell level-2"></span>
+              <span class="legend-cell level-3"></span>
+              <span>Mais</span>
+            </div>
           </div>
           <div id="inicio-resume-card" class="home-resume-card" aria-live="polite">
             <div class="home-resume-copy">
@@ -87,8 +103,9 @@
             <p>Use as abas acima para estudar:</p>
             <ul>
               <li><strong>Kana</strong> — Tabelas de Hiragana e Katakana para consulta e estudo.</li>
-              <li><strong>Lições</strong> — Conteúdo de lições (nível, categoria) e vocabulário.</li>
-              <li><strong>Meu histórico</strong> — Seu progresso nas lições (salvo no banco).</li>
+              <li><strong>Lições</strong> — Conteúdo de lições (nível, categoria) e vocabulário, com favoritos e progresso.</li>
+              <li><strong>Vocabulário</strong> — Prática, revisão, teste de múltipla escolha e modo prova com timer.</li>
+              <li><strong>Meu histórico</strong> — Seu progresso nas lições e suas sessões salvas no banco.</li>
               <li><strong>Banco de Dados</strong> — Visualização do MongoDB (admin).</li>
             </ul>
           </div>
@@ -156,11 +173,126 @@
         <!-- Aba Lições -->
         <section id="tab-licoes" class="tab-panel">
           <h2>Lições</h2>
-          <p class="muted">Conteúdo do curso. Clique em uma lição para ver detalhes.</p>
+          <p class="muted">Conteúdo do curso. Clique em uma lição para ver detalhes, favoritar e marcar progresso.</p>
+          <div id="licoes-filters" class="licoes-filters" role="tablist" aria-label="Filtros de lições">
+            <button type="button" class="licoes-filter active" data-filter="all" role="tab" aria-selected="true">Todas</button>
+            <button type="button" class="licoes-filter" data-filter="in_progress" role="tab" aria-selected="false">Em andamento</button>
+            <button type="button" class="licoes-filter" data-filter="completed" role="tab" aria-selected="false">Concluídas</button>
+            <button type="button" class="licoes-filter" data-filter="favorites" role="tab" aria-selected="false">Favoritas</button>
+          </div>
+          <p id="licoes-empty-filter" class="muted licoes-empty-filter" hidden></p>
           <div id="licoes-list" class="licoes-list"></div>
           <div id="licao-detail" class="licao-detail" hidden>
             <button type="button" id="licao-back-btn" class="back-btn">← Voltar à lista</button>
             <div id="licao-detail-content"></div>
+          </div>
+        </section>
+
+        <!-- Aba Vocabulário (prática / revisão / teste / prova) -->
+        <section id="tab-vocabulario" class="tab-panel">
+          <h2>Vocabulário</h2>
+          <p class="muted">Pratique palavras com escrita livre, revisão guiada, teste de múltipla escolha ou modo prova com timer.</p>
+
+          <div id="vocab-setup" class="vocab-box">
+            <div class="vocab-setup-grid">
+              <div class="vocab-field">
+                <label class="customize-label">Modo</label>
+                <div class="vocab-modes">
+                  <label class="vocab-mode-opt"><input type="radio" name="vocab-mode" value="practice" checked> <span><strong>Prática livre</strong><span class="vocab-mode-hint">Escreva a resposta. Sem login obrigatório.</span></span></label>
+                  <label class="vocab-mode-opt"><input type="radio" name="vocab-mode" value="review"> <span><strong>Revisão</strong><span class="vocab-mode-hint">Sessão pelo seu nível atual. Login.</span></span></label>
+                  <label class="vocab-mode-opt"><input type="radio" name="vocab-mode" value="test"> <span><strong>Teste</strong><span class="vocab-mode-hint">Múltipla escolha sem pressão.</span></span></label>
+                  <label class="vocab-mode-opt"><input type="radio" name="vocab-mode" value="exam"> <span><strong>Modo prova</strong><span class="vocab-mode-hint">Timer + pontuação acumulada.</span></span></label>
+                </div>
+                <label class="customize-label vocab-answer-type-label">Tipo de resposta</label>
+                <div class="vocab-answer-type">
+                  <label class="vocab-answer-type-opt"><input type="radio" name="vocab-answer-type" value="portuguese" checked> Tradução (português)</label>
+                  <label class="vocab-answer-type-opt"><input type="radio" name="vocab-answer-type" value="romaji"> Escrita em romaji</label>
+                </div>
+              </div>
+              <div class="vocab-filters">
+                <div class="vocab-field">
+                  <label for="vocab-level">Nível</label>
+                  <select id="vocab-level">
+                    <option value="">Qualquer</option>
+                    <option value="beginner">Iniciante</option>
+                    <option value="intermediate">Intermediário</option>
+                    <option value="advanced">Avançado</option>
+                  </select>
+                </div>
+                <div class="vocab-field">
+                  <label for="vocab-category">Categoria</label>
+                  <input type="text" id="vocab-category" placeholder="ex: greetings (opcional)" autocomplete="off">
+                </div>
+                <div class="vocab-field">
+                  <label for="vocab-limit">Quantidade</label>
+                  <input type="number" id="vocab-limit" min="5" max="50" value="12">
+                </div>
+                <div class="vocab-field" id="vocab-exam-time-field" hidden>
+                  <label for="vocab-exam-time">Tempo (segundos)</label>
+                  <input type="number" id="vocab-exam-time" min="20" max="600" value="90">
+                </div>
+              </div>
+            </div>
+            <div class="vocab-setup-actions">
+              <button type="button" id="vocab-start-btn" class="btn-primary btn-lg">Iniciar sessão</button>
+            </div>
+            <p id="vocab-setup-msg" class="muted setup-msg" hidden></p>
+          </div>
+
+          <div id="vocab-typing" class="vocab-box" hidden>
+            <div class="vocab-session-header">
+              <span id="vocab-typing-mode" class="vocab-mode-tag">Prática livre</span>
+              <span id="vocab-typing-progress" class="muted small"></span>
+            </div>
+            <p id="vocab-typing-prompt" class="muted small"></p>
+            <div class="practice-card vocab-practice-card">
+              <div id="vocab-jp" class="vocab-jp">?</div>
+              <p id="vocab-romaji-hint" class="vocab-romaji-hint muted small"></p>
+              <label for="vocab-answer" class="sr-only">Resposta</label>
+              <input type="text" id="vocab-answer" class="practice-input vocab-input-wide" placeholder="Digite a tradução" autocomplete="off">
+              <div class="practice-actions">
+                <button type="button" id="vocab-check-btn" class="btn-primary">Verificar</button>
+                <button type="button" id="vocab-skip-btn" class="btn-secondary">Pular</button>
+              </div>
+              <p id="vocab-typing-feedback" class="practice-feedback" hidden></p>
+              <p id="vocab-typing-score" class="practice-score muted"></p>
+            </div>
+            <button type="button" id="vocab-typing-finish" class="btn-secondary">Encerrar sessão</button>
+          </div>
+
+          <div id="vocab-test" class="vocab-box" hidden>
+            <div class="vocab-session-header">
+              <span id="vocab-test-mode" class="vocab-mode-tag">Teste</span>
+              <span id="vocab-test-progress" class="muted small"></span>
+            </div>
+            <div id="vocab-exam-bar" class="vocab-exam-bar" hidden>
+              <div class="vocab-exam-meta">
+                <span class="vocab-exam-points-label">Pontos</span>
+                <strong id="vocab-exam-points" class="vocab-exam-points">0</strong>
+                <span class="vocab-exam-time-label">Tempo</span>
+                <strong id="vocab-exam-time-left" class="vocab-exam-time-left">--</strong>
+              </div>
+              <div class="vocab-exam-progress" aria-hidden="true">
+                <span id="vocab-exam-progress-fill" class="vocab-exam-progress-fill"></span>
+              </div>
+            </div>
+            <div class="practice-card vocab-practice-card">
+              <div id="vocab-test-jp" class="vocab-jp">?</div>
+              <p id="vocab-test-prompt" class="muted small">Qual é a tradução em português?</p>
+              <div id="vocab-test-options" class="vocab-test-options"></div>
+              <p id="vocab-test-feedback" class="practice-feedback" hidden></p>
+            </div>
+            <div class="practice-actions vocab-test-actions">
+              <button type="button" id="vocab-test-next" class="btn-primary" hidden>Próxima</button>
+              <button type="button" id="vocab-test-finish" class="btn-secondary">Encerrar</button>
+            </div>
+          </div>
+
+          <div id="vocab-summary" class="vocab-box summary-box" hidden>
+            <h3>Sessão encerrada</h3>
+            <p id="vocab-summary-text" class="muted"></p>
+            <p id="vocab-summary-status" class="muted small"></p>
+            <button type="button" id="vocab-summary-ok" class="btn-primary">Voltar ao início</button>
           </div>
         </section>
 
