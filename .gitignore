@@ -109,3 +109,6 @@ build/
 *.bak
 *.backup
 
+# Projetos separados (com repositório git próprio)
+financeiro-familiar/
+
