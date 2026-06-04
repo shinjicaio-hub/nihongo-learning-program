@@ -7,7 +7,12 @@ Sistema simples de aprendizado de língua japonesa com backend em Node.js/Expres
 ### Backend (Node.js/Express/MongoDB)
 - **Sistema de Autenticação**: Registro, login e gerenciamento de usuários com JWT
 - **Gestão de Lições**: Organização hierárquica por níveis e categorias
-- **Sistema de Vocabulário**: Palavras e frases japonesas com traduções
+- **Sistema de Vocabulário**: Palavras e frases japonesas com traduções (prática, teste, sessões)
+
+### Site principal (`public/`)
+- **Classes (品詞)**: Mapa visual das partes da fala e grupos de verbos (`classes-guide.js`)
+- **Vocabulário**: Prática livre, revisão, teste e modo prova (tradução ou romaji)
+- **Kana, Lições, Histórico**: Prática de sílabas, progresso e favoritos
 - **Rastreamento de Progresso**: Acompanhamento do aprendizado do usuário
 - **API RESTful**: Endpoints bem estruturados e documentados
 - **Segurança**: Validação, autenticação e autorização robustas
@@ -105,10 +110,10 @@ _nihongo-project/
    ```
 
 ### Acesso ao Sistema
-- **Site (front-end + back-end junto):** abra **http://localhost:3001/** no navegador. Você verá:
-  - **Front-end:** esta interface (login, abas).
-  - **Back-end:** a API na mesma origem (`/api/*`).
-  - **Banco de Dados:** aba "Banco de Dados" (após login como admin) para visualizar coleções e documentos do MongoDB.
+- **Site (front-end + back-end junto):** abra **http://localhost:3001/** no navegador (`npm start`). Interface em `public/` (HTML/CSS/JS).
+  - **Abas:** Início (ofensiva/heatmap), Kana, Lições, **Classes** (gramática 品詞), Vocabulário, Histórico, Banco de Dados (admin).
+  - **Back-end:** API na mesma origem (`/api/*`).
+  - **Vocabulário no banco:** `npm run seed` (idempotente) ou `node populate-database.js` (recria exemplos).
 - **Health Check:** http://localhost:3001/health
 
 ### Reset e testes do zero

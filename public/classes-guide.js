@@ -107,10 +107,10 @@
       const x = 40 + (i % 3) * 280;
       const y = 30 + Math.floor(i / 3) * 100;
       return `
-        <g class="classes-diagram-node" data-class-id="${c.id}">
+        <g class="classes-diagram-node" data-class-id="${c.id}" role="button" tabindex="0" aria-label="${escapeHtml(c.jp)} — ${escapeHtml(c.pt)}">
           <rect x="${x}" y="${y}" width="240" height="72" rx="14" fill="${c.color}" opacity="0.92"/>
-          <text x="${x + 36}" y="${y + 32}" fill="#fff" font-size="18" font-weight="700">${c.jp}</text>
-          <text x="${x + 36}" y="${y + 54}" fill="rgba(255,255,255,0.9)" font-size="13">${c.pt}</text>
+          <text x="${x + 36}" y="${y + 32}" fill="#fff" font-size="18" font-weight="700">${escapeHtml(c.jp)}</text>
+          <text x="${x + 36}" y="${y + 54}" fill="rgba(255,255,255,0.9)" font-size="13">${escapeHtml(c.pt)}</text>
           <circle cx="${x + 20}" cy="${y + 36}" r="14" fill="rgba(255,255,255,0.25)"/>
           <text x="${x + 20}" y="${y + 41}" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">${c.icon}</text>
         </g>`;
@@ -207,32 +207,43 @@
     const wrap = document.getElementById('classes-filter-chips');
     if (!wrap) return;
     wrap.innerHTML = `
-      <button type="button" class="classes-chip active" data-class-id="">Todas</button>
+      <button type="button" class="classes-chip active" data-class-id="" aria-selected="true">Todas</button>
       ${GRAMMAR_CLASSES.map(c => `
-        <button type="button" class="classes-chip" data-class-id="${c.id}" style="--chip-color:${c.color}">${c.jp}</button>
+        <button type="button" class="classes-chip" data-class-id="${c.id}" style="--chip-color:${c.color}" aria-selected="false">${c.jp}</button>
       `).join('')}`;
 
     wrap.querySelectorAll('.classes-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        wrap.querySelectorAll('.classes-chip').forEach(c => c.classList.remove('active'));
-        chip.classList.add('active');
-        const id = chip.dataset.classId || '';
-        renderClassCards(id || null);
-        if (id) {
-          document.getElementById('classes-card-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-      });
+      chip.addEventListener('click', () => selectClassFilter(chip.dataset.classId || ''));
     });
+  }
 
+  function selectClassFilter(classId) {
+    const wrap = document.getElementById('classes-filter-chips');
+    if (!wrap) return;
+    wrap.querySelectorAll('.classes-chip').forEach(c => {
+      const active = (c.dataset.classId || '') === classId;
+      c.classList.toggle('active', active);
+      c.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    renderClassCards(classId || null);
+    if (classId) {
+      document.getElementById('classes-card-' + classId)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   }
 
   function bindDiagramClicks() {
     document.querySelectorAll('.classes-diagram-node').forEach(node => {
       node.style.cursor = 'pointer';
-      node.addEventListener('click', () => {
+      const activate = () => {
         const id = node.getAttribute('data-class-id');
-        const chip = document.querySelector('.classes-chip[data-class-id="' + id + '"]');
-        if (chip) chip.click();
+        if (id) selectClassFilter(id);
+      };
+      node.addEventListener('click', activate);
+      node.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          activate();
+        }
       });
     });
   }
@@ -242,7 +253,8 @@
     try {
       const res = await fetch('/api/vocabulary/random/practice?limit=50');
       const json = await res.json();
-      const words = Array.isArray(json.data) ? json.data : (json.data?.vocabulary || []);
+      if (!res.ok || !json.success) throw new Error(json.message || 'Falha na API');
+      const words = Array.isArray(json.data) ? json.data : [];
       if (words.length) {
         cachedWords = words;
         if (statusEl) {
@@ -288,7 +300,7 @@
           <li><strong>Fixe</strong> hiragana/katakana na aba Kana antes de verbos longos.</li>
           <li><strong>Avance</strong> nas Lições e marque progresso + favoritos.</li>
         </ol>
-        <p class="muted classes-note">Este painel é um resumo didático — não substitui o material completo do Google Classroom. Se o PDF da turma tiver tabelas extras (ex.: frases modelo), você pode expandir os cartões em <code>public/classes-guide.js</code>.</p>
+        <p class="muted classes-note">Resumo didático para consulta rápida. Para incluir mais tópicos ou exemplos do material da turma, edite <code>public/classes-guide.js</code> (array <code>GRAMMAR_CLASSES</code>).</p>
       </section>
 
       <div id="classes-filter-chips" class="classes-chips" role="tablist" aria-label="Filtrar por classe gramatical"></div>
