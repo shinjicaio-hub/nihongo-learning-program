@@ -42,6 +42,7 @@
           <button type="button" class="tab active" data-tab="inicio">Início</button>
           <button type="button" class="tab" data-tab="kana">Kana</button>
           <button type="button" class="tab" data-tab="licoes">Lições</button>
+          <button type="button" class="tab" data-tab="classes">Classes</button>
           <button type="button" class="tab" data-tab="vocabulario">Vocabulário</button>
           <button type="button" class="tab" data-tab="historico">Meu histórico</button>
           <button type="button" class="tab" data-tab="banco">Banco de Dados</button>
@@ -104,6 +105,7 @@
             <ul>
               <li><strong>Kana</strong> — Tabelas de Hiragana e Katakana para consulta e estudo.</li>
               <li><strong>Lições</strong> — Conteúdo de lições (nível, categoria) e vocabulário, com favoritos e progresso.</li>
+              <li><strong>Classes</strong> — Mapa visual das partes da fala (品詞), grupos de verbos e exemplos do banco.</li>
               <li><strong>Vocabulário</strong> — Prática, revisão, teste de múltipla escolha e modo prova com timer.</li>
               <li><strong>Meu histórico</strong> — Seu progresso nas lições e suas sessões salvas no banco.</li>
               <li><strong>Banco de Dados</strong> — Visualização do MongoDB (admin).</li>
@@ -187,6 +189,9 @@
             <div id="licao-detail-content"></div>
           </div>
         </section>
+
+        <!-- Aba Classes (gramática / 品詞) -->
+        <section id="tab-classes" class="tab-panel" aria-label="Classes gramaticais japonesas"></section>
 
         <!-- Aba Vocabulário (prática / revisão / teste / prova) -->
         <section id="tab-vocabulario" class="tab-panel">
@@ -326,6 +331,7 @@
       </main>
     </div>
   </div>
+  <script src="classes-guide.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

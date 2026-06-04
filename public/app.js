@@ -53,7 +53,7 @@
   const loginError = document.getElementById('login-error');
   const loginBtn = document.getElementById('login-btn');
   const ACTIVE_TAB_STORAGE_KEY = 'nihongo_active_tab';
-  const VALID_TAB_IDS = ['inicio', 'kana', 'licoes', 'vocabulario', 'historico', 'banco'];
+  const VALID_TAB_IDS = ['inicio', 'kana', 'licoes', 'classes', 'vocabulario', 'historico', 'banco'];
 
   function showLogin() {
     loginScreen.hidden = false;
@@ -128,6 +128,7 @@
     if (nextTabId === 'kana') renderKana();
     if (nextTabId === 'licoes') loadLicoes();
     if (nextTabId === 'vocabulario') resetVocabTab();
+    if (nextTabId === 'classes' && typeof window.loadClassesTab === 'function') window.loadClassesTab();
   }
 
   document.querySelectorAll('.tab').forEach(btn => {

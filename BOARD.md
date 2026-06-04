@@ -152,13 +152,14 @@ Front-end: prática com hiragana/katakana, baralho (mostrar todos antes de repet
 | Etapa | Status | Descrição |
 |-------|--------|-----------|
 | Login / Registro | ✅ | Tela de login, token no `localStorage` |
-| Abas principais | ✅ | Início, Kana, **Vocabulário**, Lições, Histórico, Banco de Dados |
+| Abas principais | ✅ | Início, Kana, Lições, **Classes**, Vocabulário, Histórico, Banco de Dados |
 | Cabeçalho logado | ✅ | Bloco de marca (`brand-block`), subtítulo, abas com `aria-label`, botão Sair |
 | Aba Início — ofensiva | ✅ | Contagem em destaque de dias **consecutivos** com atividade nos últimos 30 dias (calendário local); dados de `GET /api/progress/my-progress` (`last_accessed`) + `GET /api/kana/activity?days=30` (`createdAt`) + sessões de vocabulário; estados visuais vazios/erro e faixas por tamanho da ofensiva |
 | Aba Início — heatmap | ✅ | Grade de **30 dias** com 4 níveis de intensidade (atividade combinada de kana + vocabulário + progresso de lições), legenda “Menos / Mais”, resumo numérico e `aria-live` |
 | Aba Início — retomada | ✅ | Card “Continuar de onde parou”: primeira lição com status `in_progress` em `my-progress`; botão abre a aba Lições e o detalhe da lição |
 | Aba Início — teste manual | ✅ | Painel opcional para simular ofensiva 0–30 (demonstração) via `localStorage`; “Voltar ao automático” restaura o cálculo real |
 | Prática de Kana | ✅ | Customização (alfabeto/sílabas), atividade, resumo, baralho, contagem, Enter |
+| Aba Classes (品詞) | ✅ | Material didático no front: diagrama SVG das partes da fala (名詞, 動詞, い/な形容詞, 副詞, 助詞), gráfico dos grupos de verbos (五段 / 一段 / 不规则), cartões com exemplos do banco (`GET /api/vocabulary/random/practice`) + exemplos fixos, filtros por classe, roteiro de estudo e atalho para Vocabulário. Implementação em `public/classes-guide.js` |
 | Aba Vocabulário | ✅ | 4 modos: **Prática livre**, **Revisão** (autenticado), **Teste** (múltipla escolha), **Modo prova** (timer + pontuação acumulada). Filtros por nível/categoria/limite e seletor **Tipo de resposta** (`Tradução` ou `Romaji`) que altera prompt, placeholder, dicas exibidas e o critério de acerto/distratores. Persistência das sessões via `POST /api/vocabulary/session` |
 | Listagem de lições | ✅ | Filtros por nível/categoria/status, badges de progresso (`Concluído`/`Em andamento`/`Não iniciado`) e `score`; detalhe da lição com **range** de pontuação, botão **Marcar como concluído** e toggle de **favorito** |
 | Histórico | ✅ | Cards estruturados: progresso por lição (status, score, tentativas) e sessões de vocabulário (modo, nível, categoria, acertos, duração) buscadas em `GET /api/vocabulary/my-sessions` |
@@ -192,4 +193,4 @@ Front-end: prática com hiragana/katakana, baralho (mostrar todos antes de repet
 
 ---
 
-*Última atualização do board: aba Vocabulário (prática livre, revisão, teste, modo prova) com **tipo de resposta** (tradução/romaji), seed expandido (9 lições / 76 palavras), heatmap de 30 dias na Início, lições com filtros + score + favoritos, histórico com cards de sessões de vocabulário (`/api/vocabulary/my-sessions`, `POST /api/vocabulary/session`).*
+*Última atualização do board: aba **Classes** (mapa visual 品詞, grupos de verbos, exemplos do vocabulário, `public/classes-guide.js`); demais entregas: Vocabulário (tradução/romaji), seed (9 lições / 76 palavras), heatmap na Início, lições com progresso/favoritos, histórico de sessões.*
