@@ -159,7 +159,7 @@ Front-end: prática com hiragana/katakana, baralho (mostrar todos antes de repet
 | Aba Início — retomada | ✅ | Card “Continuar de onde parou”: primeira lição com status `in_progress` em `my-progress`; botão abre a aba Lições e o detalhe da lição |
 | Aba Início — teste manual | ✅ | Painel opcional para simular ofensiva 0–30 (demonstração) via `localStorage`; “Voltar ao automático” restaura o cálculo real |
 | Prática de Kana | ✅ | Customização (alfabeto/sílabas), atividade, resumo, baralho, contagem, Enter |
-| Aba Classes (品詞) | ✅ | Referência visual no `public/`: diagrama SVG clicável (名詞, 動詞, い/な形容詞, 副詞, 助詞), gráfico 五段/一段/不规则, cartões com exemplos de `GET /api/vocabulary/random/practice` + fallback fixo, chips de filtro, roteiro de estudo e botão para aba Vocabulário (`public/classes-guide.js`) |
+| Aba Classes (品詞) | ✅ | Referência de gramática no `public/`: diagrama SVG clicável (名詞, 動詞, い/な形容詞, 副詞, 助詞), gráfico 五段/一段/不规则, cartões com exemplos de `GET /api/vocabulary/random/practice` + fallback fixo, chips de filtro, roteiro de estudo e botão para aba Vocabulário (`public/classes-guide.js`) |
 | Aba Vocabulário | ✅ | 4 modos: **Prática livre**, **Revisão** (autenticado), **Teste** (múltipla escolha), **Modo prova** (timer + pontuação acumulada). Filtros por nível/categoria/limite e seletor **Tipo de resposta** (`Tradução` ou `Romaji`) que altera prompt, placeholder, dicas exibidas e o critério de acerto/distratores. Persistência das sessões via `POST /api/vocabulary/session` |
 | Listagem de lições | ✅ | Filtros por nível/categoria/status, badges de progresso (`Concluído`/`Em andamento`/`Não iniciado`) e `score`; detalhe da lição com **range** de pontuação, botão **Marcar como concluído** e toggle de **favorito** |
 | Histórico | ✅ | Cards estruturados: progresso por lição (status, score, tentativas) e sessões de vocabulário (modo, nível, categoria, acertos, duração) buscadas em `GET /api/vocabulary/my-sessions` |
@@ -193,4 +193,4 @@ Front-end: prática com hiragana/katakana, baralho (mostrar todos antes de repet
 
 ---
 
-*Última atualização do board: aba **Classes** (品詞, diagrama + cartões, `classes-guide.js`); site principal em `public/` (porta 3001); seed `npm run seed`; Vocabulário com tradução/romaji; heatmap e progresso nas lições.*
+*Última atualização do board: aba **Classes** (品詞 — mapa gramatical, verbos e cartões, `classes-guide.js`); site principal em `public/` (porta 3001); seed `npm run seed`; Vocabulário com tradução/romaji; heatmap e progresso nas lições.*

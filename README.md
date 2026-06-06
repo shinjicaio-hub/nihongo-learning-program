@@ -10,7 +10,7 @@ Sistema simples de aprendizado de língua japonesa com backend em Node.js/Expres
 - **Sistema de Vocabulário**: Palavras e frases japonesas com traduções (prática, teste, sessões)
 
 ### Site principal (`public/`)
-- **Classes (品詞)**: Mapa visual das partes da fala e grupos de verbos (`classes-guide.js`)
+- **Classes (品詞)**: Mapa visual das partes da fala, grupos de verbos e exemplos do vocabulário (`classes-guide.js`)
 - **Vocabulário**: Prática livre, revisão, teste e modo prova (tradução ou romaji)
 - **Kana, Lições, Histórico**: Prática de sílabas, progresso e favoritos
 - **Rastreamento de Progresso**: Acompanhamento do aprendizado do usuário

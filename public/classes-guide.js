@@ -280,10 +280,13 @@
     panel.innerHTML = `
       <header class="classes-hero">
         <p class="classes-hero-kicker">Material de referência · estilo sala de aula</p>
-        <h2>Classes da gramática japonesa</h2>
-        <p class="muted">Mapa visual das <strong>品詞</strong> (partes da fala), grupos de verbos e exemplos ligados ao vocabulário do projeto.</p>
+        <h2>Classes — gramática japonesa</h2>
+        <p class="muted">Mapa das <strong>品詞</strong> (partes da fala em japonês) com exemplos do vocabulário do projeto.</p>
       </header>
 
+      <section class="classes-section">
+        <h3>Partes da fala em japonês (品詞)</h3>
+      </section>
       <div class="classes-diagram-wrap">${buildDiagramSvg()}</div>
       <p class="classes-diagram-hint muted">Clique em um bloco do diagrama para filtrar os cartões abaixo.</p>
 
