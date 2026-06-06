@@ -8,14 +8,8 @@
 
 **Solução:**
 ```bash
-# Execute um dos scripts de configuração:
-# PowerShell:
-.\setup-env.ps1
-
-# Ou CMD:
-setup-env.bat
-
-# Ou manualmente:
+node create-env.js
+# ou copie manualmente:
 copy env.example .env
 ```
 
@@ -187,7 +181,7 @@ Se ainda tiver problemas:
 
 ```bash
 # Reset completo do ambiente:
-npm run db:reset
+npm run db:clear
 npm run lint:fix
 npm run dev
 

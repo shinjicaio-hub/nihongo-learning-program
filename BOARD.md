@@ -163,7 +163,7 @@ Front-end: prática com hiragana/katakana, baralho (mostrar todos antes de repet
 | Aba Vocabulário | ✅ | 4 modos: **Prática livre**, **Revisão** (autenticado), **Teste** (múltipla escolha), **Modo prova** (timer + pontuação acumulada). Filtros por nível/categoria/limite e seletor **Tipo de resposta** (`Tradução` ou `Romaji`) que altera prompt, placeholder, dicas exibidas e o critério de acerto/distratores. Persistência das sessões via `POST /api/vocabulary/session` |
 | Listagem de lições | ✅ | Filtros por nível/categoria/status, badges de progresso (`Concluído`/`Em andamento`/`Não iniciado`) e `score`; detalhe da lição com **range** de pontuação, botão **Marcar como concluído** e toggle de **favorito** |
 | Histórico | ✅ | Cards estruturados: progresso por lição (status, score, tentativas) e sessões de vocabulário (modo, nível, categoria, acertos, duração) buscadas em `GET /api/vocabulary/my-sessions` |
-| Aba Banco de Dados | ✅ | Status da conexão, coleções (conforme `DATABASE_INTERFACE_GUIDE.md`) |
+| Aba Banco de Dados | ✅ | Status da conexão e inspeção de coleções/documentos (`/api/admin/*`, role admin) |
 
 ---
 
@@ -193,4 +193,4 @@ Front-end: prática com hiragana/katakana, baralho (mostrar todos antes de repet
 
 ---
 
-*Última atualização do board: aba **Classes** (品詞 — mapa gramatical, verbos e cartões, `classes-guide.js`); site principal em `public/` (porta 3001); seed `npm run seed`; Vocabulário com tradução/romaji; heatmap e progresso nas lições.*
+*Última atualização do board: limpeza de código/docs obsoletos; site em `public/` (porta 3001); aba Classes (品詞); seed `npm run seed`; vocabulário tradução/romaji.*

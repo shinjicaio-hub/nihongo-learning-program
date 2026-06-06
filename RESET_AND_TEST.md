@@ -173,5 +173,4 @@ curl http://localhost:3001/api/lessons
 | `npm run dev` | Sobe a API com nodemon |
 | `npm start` | Sobe a API com node |
 | `npm run seed` ou `node populate-database.js` | Popula banco com dados de exemplo |
-| `npm run db:reset` | Mesmo que `db:clear`: zera banco e cria 1 admin |
 | `node create-env.js` | Gera arquivo `.env` de exemplo |

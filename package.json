@@ -13,7 +13,7 @@
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "seed": "node scripts/seed.js",
-    "db:reset": "node scripts/resetDb.js"
+    "db:clear": "node clear-database.js"
   },
   "keywords": [
     "japanese",
